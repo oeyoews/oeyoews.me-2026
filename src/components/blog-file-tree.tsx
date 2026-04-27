@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { ChevronRight, FileCode2, FileImage, FileText, Folder, FolderOpen } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { cn } from '@/lib/utils'
 
 type BlogFileTreeProps = {
@@ -10,6 +10,14 @@ type BlogFileTreeProps = {
     sourcePath: string
   }>
   currentHashid?: string
+  focusedHashid?: string
+  focusedTreePath?: string
+  toggleDirectoryRequest?: {
+    path: string
+    nonce: number
+  }
+  onOpenPathsChange?: (paths: string[]) => void
+  onSelectFile?: () => void
 }
 
 type TreeNode = {
@@ -82,12 +90,20 @@ function toLabel(name: string) {
 function NodeItem({
   node,
   currentHashid,
-  defaultOpenPaths,
+  focusedHashid,
+  focusedTreePath,
+  openPaths,
+  setOpenPaths,
+  onSelectFile,
   path = '',
 }: {
   node: TreeNode
   currentHashid?: string
-  defaultOpenPaths: Set<string>
+  focusedHashid?: string
+  focusedTreePath?: string
+  openPaths: Set<string>
+  setOpenPaths: Dispatch<SetStateAction<Set<string>>>
+  onSelectFile?: () => void
   path?: string
 }) {
   const isFile = Boolean(node.hashid)
@@ -98,19 +114,23 @@ function NodeItem({
   })
 
   const nodePath = path ? `${path}/${node.name}` : node.name
-  const initialOpen = defaultOpenPaths.has(nodePath)
+  const isFocusedPath = focusedTreePath === nodePath
 
   if (isFile && node.hashid) {
     const isActive = currentHashid === node.hashid
+    const isFocused = focusedHashid === node.hashid
     const FileIcon = node.extension === 'md' ? FileCode2 : isImageExtension(node.extension) ? FileImage : FileText
     return (
       <li>
         <Link
           to="/blog/$hashid"
           params={{ hashid: node.hashid }}
+          onClick={onSelectFile}
           className={cn(
             'explorer-row',
             isActive ? 'explorer-row-active font-medium' : 'explorer-row-muted',
+            isFocused && !isActive && 'explorer-row-focused',
+            isFocusedPath && !isActive && 'explorer-row-focused',
           )}
         >
           <FileIcon className="size-4 shrink-0" />
@@ -120,20 +140,24 @@ function NodeItem({
     )
   }
 
-  const [open, setOpen] = useState(Boolean(initialOpen))
-
-  useEffect(() => {
-    if (initialOpen) {
-      setOpen(true)
-    }
-  }, [initialOpen])
+  const open = openPaths.has(nodePath)
 
   return (
     <li>
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className="explorer-row explorer-row-muted group w-full text-left"
+        onClick={() =>
+          setOpenPaths((prev) => {
+            const next = new Set(prev)
+            if (next.has(nodePath)) next.delete(nodePath)
+            else next.add(nodePath)
+            return next
+          })
+        }
+        className={cn(
+          'explorer-row explorer-row-muted group w-full text-left',
+          isFocusedPath && 'explorer-row-focused',
+        )}
       >
         <ChevronRight
           className={cn('size-4 shrink-0 transition-transform', open && 'rotate-90')}
@@ -153,8 +177,12 @@ function NodeItem({
                 key={`${nodePath}/${child.name}`}
                 node={child}
                 currentHashid={currentHashid}
+                focusedHashid={focusedHashid}
+                focusedTreePath={focusedTreePath}
                 path={nodePath}
-                defaultOpenPaths={defaultOpenPaths}
+                openPaths={openPaths}
+                setOpenPaths={setOpenPaths}
+                onSelectFile={onSelectFile}
               />
             ))}
           </ul>
@@ -164,10 +192,42 @@ function NodeItem({
   )
 }
 
-export default function BlogFileTree({ items, currentHashid }: BlogFileTreeProps) {
+export default function BlogFileTree({
+  items,
+  currentHashid,
+  focusedHashid,
+  focusedTreePath,
+  toggleDirectoryRequest,
+  onOpenPathsChange,
+  onSelectFile,
+}: BlogFileTreeProps) {
   const tree = useMemo(() => buildTree(items), [items])
   const current = items.find((item) => item.hashid === currentHashid)
   const defaultOpenPaths = new Set(collectParentPaths(current?.treePath))
+  const [openPaths, setOpenPaths] = useState<Set<string>>(defaultOpenPaths)
+
+  useEffect(() => {
+    setOpenPaths((prev) => {
+      const next = new Set(prev)
+      for (const path of defaultOpenPaths) next.add(path)
+      return next
+    })
+  }, [currentHashid])
+
+  useEffect(() => {
+    if (!toggleDirectoryRequest) return
+    const targetPath = toggleDirectoryRequest.path
+    setOpenPaths((prev) => {
+      const next = new Set(prev)
+      if (next.has(targetPath)) next.delete(targetPath)
+      else next.add(targetPath)
+      return next
+    })
+  }, [toggleDirectoryRequest])
+
+  useEffect(() => {
+    onOpenPathsChange?.(Array.from(openPaths))
+  }, [onOpenPathsChange, openPaths])
   const topLevelNodes = Array.from(tree.children.values()).sort((a, b) => {
     if (a.hashid && !b.hashid) return 1
     if (!a.hashid && b.hashid) return -1
@@ -183,8 +243,12 @@ export default function BlogFileTree({ items, currentHashid }: BlogFileTreeProps
             key={node.name}
             node={node}
             currentHashid={currentHashid}
+            focusedHashid={focusedHashid}
+            focusedTreePath={focusedTreePath}
             path=""
-            defaultOpenPaths={defaultOpenPaths}
+            openPaths={openPaths}
+            setOpenPaths={setOpenPaths}
+            onSelectFile={onSelectFile}
           />
         ))}
       </ul>

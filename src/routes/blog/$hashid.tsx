@@ -1,5 +1,5 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { allTreeItems, getImageByHashid, getPostByHashid } from '../../blog/posts'
+import { allPosts, allTreeItems, getImageByHashid, getPostByHashid } from '../../blog/posts'
 import BlogListPage from '../../components/blog-list-page'
 
 type TocItem = {
@@ -55,6 +55,7 @@ export const Route = createFileRoute('/blog/$hashid')({
     if (!activePost && !activeImage) throw notFound()
 
     return {
+      posts: allPosts,
       treeItems: allTreeItems,
       activePost,
       activeImage,
@@ -76,9 +77,10 @@ export const Route = createFileRoute('/blog/$hashid')({
 })
 
 function BlogPostPage() {
-  const { treeItems, activePost, activeImage, toc } = Route.useLoaderData()
+  const { posts, treeItems, activePost, activeImage, toc } = Route.useLoaderData()
   return (
     <BlogListPage
+      posts={posts}
       treeItems={treeItems}
       activePost={activePost}
       activeImage={activeImage}

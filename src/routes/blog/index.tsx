@@ -53,6 +53,7 @@ export const Route = createFileRoute('/blog/')({
     const activePostMeta = allPosts[0]
     const activePost = activePostMeta ? getPostByHashid(activePostMeta.hashid) : undefined
     return {
+      posts: allPosts,
       treeItems: allTreeItems,
       activePost,
       toc: activePost ? extractToc(activePost.content) : [],
@@ -65,9 +66,10 @@ export const Route = createFileRoute('/blog/')({
 })
 
 function BlogIndexPage() {
-  const { treeItems, activePost, toc } = Route.useLoaderData()
+  const { posts, treeItems, activePost, toc } = Route.useLoaderData()
   return (
     <BlogListPage
+      posts={posts}
       treeItems={treeItems}
       activePost={activePost}
       toc={Array.isArray(toc) ? toc : []}

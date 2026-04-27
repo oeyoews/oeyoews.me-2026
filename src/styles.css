@@ -149,6 +149,10 @@
     border-left: 1px solid #2f3750;
   }
 
+  .pane-focused {
+    box-shadow: inset 0 0 0 1px #4b5f90;
+  }
+
   .vscode-explorer-shell {
     @apply flex h-full;
   }
@@ -268,6 +272,12 @@
     color: #ecf1ff;
   }
 
+  .explorer-row-focused {
+    background: #2a3450;
+    color: #e4eafd;
+    outline: 1px solid #4b5f90;
+  }
+
   .toc-panel-title {
     @apply border-b px-3 py-3 text-[11px] font-semibold uppercase tracking-wide;
     border-color: #2f3750;
@@ -292,6 +302,11 @@
   .toc-item-active {
     background: #33466f;
     color: #ecf1ff;
+  }
+
+  .toc-item-focused {
+    outline: 1px solid #4b5f90;
+    outline-offset: -1px;
   }
 
   .toc-item-child {

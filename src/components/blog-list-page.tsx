@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { Streamdown } from 'streamdown'
-import type { BlogImage, BlogPost, BlogTreeItem } from '../blog/posts'
+import type { BlogImage, BlogPost, BlogPostMeta, BlogTreeItem } from '../blog/posts'
 import BlogFileTree from './blog-file-tree'
 import VscodeActivityBar from './vscode-activity-bar'
 import { cn } from '@/lib/utils'
 
 type BlogListPageProps = {
+  posts: BlogPostMeta[]
   treeItems: BlogTreeItem[]
   activePost?: BlogPost
   activeImage?: BlogImage
@@ -23,16 +25,113 @@ function toHeadingId(text: string) {
   return normalized || 'section'
 }
 
+function isEditableTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false
+  const tag = target.tagName.toLowerCase()
+  return (
+    target.isContentEditable ||
+    tag === 'input' ||
+    tag === 'textarea' ||
+    tag === 'select' ||
+    Boolean(target.closest('[contenteditable="true"]'))
+  )
+}
+
 export default function BlogListPage({
+  posts,
   treeItems,
   activePost,
   activeImage,
   toc = [],
 }: BlogListPageProps) {
+  const navigate = useNavigate()
   const contentRef = useRef<HTMLDivElement>(null)
   const tocClickLockUntilRef = useRef(0)
+  const pendingGUntilRef = useRef(0)
+  const drawerTouchStartXRef = useRef<number | null>(null)
+  const drawerTouchStartYRef = useRef<number | null>(null)
+  const [showMobileTree, setShowMobileTree] = useState(false)
   const showToc = Boolean(activePost) && toc.length > 1
   const [activeTocId, setActiveTocId] = useState<string>('')
+  const [focusedTocId, setFocusedTocId] = useState<string | undefined>(undefined)
+  const [activePane, setActivePane] = useState<'left' | 'right'>('left')
+  const [focusedHashid, setFocusedHashid] = useState<string | undefined>(undefined)
+  const [focusedTreePath, setFocusedTreePath] = useState<string | undefined>(undefined)
+  const [openDirectoryPaths, setOpenDirectoryPaths] = useState<string[]>([])
+  const [toggleDirectoryRequest, setToggleDirectoryRequest] = useState<{ path: string; nonce: number }>()
+  const leftPaneEntries = useMemo(() => {
+    type NavNode = {
+      name: string
+      path: string
+      hashid?: string
+      children: Map<string, NavNode>
+    }
+    const root: NavNode = { name: '', path: '', children: new Map() }
+
+    for (const item of treeItems) {
+      const parts = item.treePath.split('/').filter(Boolean)
+      let cursor = root
+      let acc = ''
+      for (let i = 0; i < parts.length; i += 1) {
+        const part = parts[i]
+        acc = acc ? `${acc}/${part}` : part
+        let next = cursor.children.get(part)
+        if (!next) {
+          next = { name: part, path: acc, children: new Map() }
+          cursor.children.set(part, next)
+        }
+        if (i === parts.length - 1) {
+          next.hashid = item.hashid
+        }
+        cursor = next
+      }
+    }
+
+    const result: Array<{ path: string; type: 'dir' | 'file'; hashid?: string }> = []
+    const walk = (node: NavNode) => {
+      const children = Array.from(node.children.values()).sort((a, b) => {
+        const aIsFile = Boolean(a.hashid)
+        const bIsFile = Boolean(b.hashid)
+        if (aIsFile && !bIsFile) return 1
+        if (!aIsFile && bIsFile) return -1
+        return a.name.localeCompare(b.name)
+      })
+
+      for (const child of children) {
+        if (child.hashid) {
+          result.push({ path: child.path, type: 'file', hashid: child.hashid })
+        } else {
+          result.push({ path: child.path, type: 'dir' })
+          walk(child)
+        }
+      }
+    }
+
+    walk(root)
+    return result
+  }, [treeItems])
+  const openDirectoryPathSet = useMemo(() => new Set(openDirectoryPaths), [openDirectoryPaths])
+  const visibleLeftPaneEntries = useMemo(() => {
+    const isVisible = (entryPath: string, type: 'dir' | 'file') => {
+      const parts = entryPath.split('/').filter(Boolean)
+      const end = type === 'dir' ? parts.length - 1 : parts.length - 1
+      let acc = ''
+      for (let i = 0; i < end; i += 1) {
+        acc = acc ? `${acc}/${parts[i]}` : parts[i]
+        if (!openDirectoryPathSet.has(acc)) return false
+      }
+      return true
+    }
+
+    return leftPaneEntries.filter((entry) => isVisible(entry.path, entry.type))
+  }, [leftPaneEntries, openDirectoryPathSet])
+  const currentPostIndex = activePost
+    ? posts.findIndex((item) => item.hashid === activePost.meta.hashid)
+    : -1
+  const prevPost = currentPostIndex > 0 ? posts[currentPostIndex - 1] : undefined
+  const nextPost = currentPostIndex >= 0 ? posts[currentPostIndex + 1] : undefined
+  const currentHashid = activePost?.meta.hashid ?? activeImage?.meta.hashid
+  const tocIds = useMemo(() => toc.map((item) => item.id), [toc])
 
   const scrollToHeading = (id: string) => {
     const root = contentRef.current
@@ -98,22 +197,271 @@ export default function BlogListPage({
     }
   }, [activePost?.content])
 
+  useEffect(() => {
+    if (!currentHashid) return
+    setFocusedHashid(currentHashid)
+    const currentItem = treeItems.find((item) => item.hashid === currentHashid)
+    if (currentItem) setFocusedTreePath(currentItem.treePath)
+  }, [currentHashid, treeItems])
+
+  useEffect(() => {
+    if (!focusedTreePath) return
+    const isFocusedVisible = visibleLeftPaneEntries.some((entry) => entry.path === focusedTreePath)
+    if (isFocusedVisible) return
+
+    const parts = focusedTreePath.split('/').filter(Boolean)
+    while (parts.length > 1) {
+      parts.pop()
+      const parentPath = parts.join('/')
+      const parentVisible = visibleLeftPaneEntries.some((entry) => entry.path === parentPath)
+      if (parentVisible) {
+        setFocusedTreePath(parentPath)
+        return
+      }
+    }
+
+    setFocusedTreePath(visibleLeftPaneEntries[0]?.path)
+  }, [focusedTreePath, visibleLeftPaneEntries])
+
+  useEffect(() => {
+    if (!showToc && activePane === 'right') {
+      setActivePane('left')
+    }
+  }, [activePane, showToc])
+
+  useEffect(() => {
+    if (!showToc) {
+      setFocusedTocId(undefined)
+      return
+    }
+    if (activeTocId) {
+      setFocusedTocId(activeTocId)
+      return
+    }
+    setFocusedTocId(tocIds[0])
+  }, [activeTocId, showToc, tocIds])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      if (!visibleLeftPaneEntries.length && !tocIds.length) return
+
+      const now = Date.now()
+
+      if (event.key === 'G') {
+        event.preventDefault()
+        pendingGUntilRef.current = 0
+        if (activePane === 'left' && visibleLeftPaneEntries.length) {
+          const entry = visibleLeftPaneEntries[visibleLeftPaneEntries.length - 1]
+          setFocusedTreePath(entry?.path)
+          if (entry?.type === 'file' && entry.hashid) setFocusedHashid(entry.hashid)
+        } else if (activePane === 'right' && tocIds.length) {
+          setFocusedTocId(tocIds[tocIds.length - 1])
+        }
+        return
+      }
+
+      if (event.key === 'g') {
+        event.preventDefault()
+        if (now < pendingGUntilRef.current) {
+          pendingGUntilRef.current = 0
+          if (activePane === 'left' && visibleLeftPaneEntries.length) {
+            const entry = visibleLeftPaneEntries[0]
+            setFocusedTreePath(entry?.path)
+            if (entry?.type === 'file' && entry.hashid) setFocusedHashid(entry.hashid)
+          } else if (activePane === 'right' && tocIds.length) {
+            setFocusedTocId(tocIds[0])
+          }
+        } else {
+          pendingGUntilRef.current = now + 500
+        }
+        return
+      }
+
+      if (event.key === 'h' || event.key === 'H') {
+        event.preventDefault()
+        setActivePane('left')
+        return
+      }
+
+      if (event.key === 'l' || event.key === 'L') {
+        if (!showToc) return
+        event.preventDefault()
+        setActivePane('right')
+        return
+      }
+
+      if (activePane === 'left') {
+        const activeIndex = focusedTreePath
+          ? visibleLeftPaneEntries.findIndex((item) => item.path === focusedTreePath)
+          : -1
+
+        if (event.key === 'j' || event.key === 'J') {
+          event.preventDefault()
+          const nextIndex =
+            activeIndex < 0 ? 0 : Math.min(activeIndex + 1, visibleLeftPaneEntries.length - 1)
+          const entry = visibleLeftPaneEntries[nextIndex]
+          setFocusedTreePath(entry?.path)
+          if (entry?.type === 'file' && entry.hashid) setFocusedHashid(entry.hashid)
+          return
+        }
+
+        if (event.key === 'k' || event.key === 'K') {
+          event.preventDefault()
+          const prevIndex = activeIndex < 0 ? 0 : Math.max(activeIndex - 1, 0)
+          const entry = visibleLeftPaneEntries[prevIndex]
+          setFocusedTreePath(entry?.path)
+          if (entry?.type === 'file' && entry.hashid) setFocusedHashid(entry.hashid)
+          return
+        }
+
+        if (event.key === 'o' || event.key === 'O') {
+          event.preventDefault()
+          const entry = focusedTreePath
+            ? visibleLeftPaneEntries.find((item) => item.path === focusedTreePath)
+            : undefined
+          if (!entry) return
+          if (entry.type === 'dir') {
+            setToggleDirectoryRequest({
+              path: entry.path,
+              nonce: Date.now(),
+            })
+            return
+          }
+          if (!entry.hashid) return
+          navigate({
+            to: '/blog/$hashid',
+            params: { hashid: entry.hashid },
+          })
+        }
+        return
+      }
+
+      const focusedIndex = focusedTocId ? tocIds.findIndex((id) => id === focusedTocId) : -1
+
+      if (event.key === 'j' || event.key === 'J') {
+        event.preventDefault()
+        const nextIndex = focusedIndex < 0 ? 0 : Math.min(focusedIndex + 1, tocIds.length - 1)
+        setFocusedTocId(tocIds[nextIndex])
+        return
+      }
+
+      if (event.key === 'k' || event.key === 'K') {
+        event.preventDefault()
+        const prevIndex = focusedIndex < 0 ? 0 : Math.max(focusedIndex - 1, 0)
+        setFocusedTocId(tocIds[prevIndex])
+        return
+      }
+
+      if (event.key === 'o' || event.key === 'O') {
+        if (!focusedTocId) return
+        event.preventDefault()
+        scrollToHeading(focusedTocId)
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [
+    activePane,
+    focusedTocId,
+    focusedTreePath,
+    navigate,
+    scrollToHeading,
+    showToc,
+    tocIds,
+    visibleLeftPaneEntries,
+  ])
+
   return (
     <main className="page-shell">
+      {showMobileTree ? (
+        <div className="fixed inset-0 z-40 xl:hidden" role="dialog" aria-modal="true" aria-label="博客目录">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/45"
+            onClick={() => setShowMobileTree(false)}
+            aria-label="关闭目录"
+          />
+          <div
+            className="absolute inset-y-0 left-0 w-[85vw] max-w-[360px] overflow-hidden border-r border-[#2f3750] bg-[#202739] shadow-2xl"
+            onTouchStart={(event) => {
+              const touch = event.touches[0]
+              drawerTouchStartXRef.current = touch?.clientX ?? null
+              drawerTouchStartYRef.current = touch?.clientY ?? null
+            }}
+            onTouchMove={(event) => {
+              if (drawerTouchStartXRef.current == null || drawerTouchStartYRef.current == null) return
+              const touch = event.touches[0]
+              if (!touch) return
+              const deltaX = touch.clientX - drawerTouchStartXRef.current
+              const deltaY = Math.abs(touch.clientY - drawerTouchStartYRef.current)
+              // Horizontal swipe right closes drawer
+              if (deltaX > 60 && deltaY < 40) {
+                setShowMobileTree(false)
+                drawerTouchStartXRef.current = null
+                drawerTouchStartYRef.current = null
+              }
+            }}
+            onTouchEnd={() => {
+              drawerTouchStartXRef.current = null
+              drawerTouchStartYRef.current = null
+            }}
+          >
+            <div className="flex items-center justify-between border-b border-[#2f3750] px-3 py-2">
+              <p className="text-sm font-medium text-[#dbe5ff]">博客目录</p>
+              <button
+                type="button"
+                onClick={() => setShowMobileTree(false)}
+                className="rounded px-2 py-1 text-xs text-[#9aa6c5] hover:bg-[#2a3450] hover:text-[#e4eafd]"
+              >
+                关闭
+              </button>
+            </div>
+            <div className="h-[calc(100%-41px)] overflow-y-auto">
+              <BlogFileTree
+                items={treeItems}
+                currentHashid={currentHashid}
+                focusedHashid={focusedHashid}
+                focusedTreePath={focusedTreePath}
+                toggleDirectoryRequest={toggleDirectoryRequest}
+                onOpenPathsChange={setOpenDirectoryPaths}
+                onSelectFile={() => setShowMobileTree(false)}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className={cn('main-grid', !showToc && 'main-grid-no-toc')}>
-        <div className="blog-side-panel">
+        <div className={cn('blog-side-panel', activePane === 'left' && 'pane-focused')}>
           <div className="vscode-explorer-shell">
             <VscodeActivityBar active="files" />
             <div className="vscode-explorer-content">
               <BlogFileTree
                 items={treeItems}
-                currentHashid={activePost?.meta.hashid ?? activeImage?.meta.hashid}
+                currentHashid={currentHashid}
+                focusedHashid={focusedHashid}
+                focusedTreePath={focusedTreePath}
+                toggleDirectoryRequest={toggleDirectoryRequest}
+                onOpenPathsChange={setOpenDirectoryPaths}
+                onSelectFile={() => setShowMobileTree(false)}
               />
             </div>
           </div>
         </div>
 
         <section className="blog-col-main">
+          <div className="mb-4 xl:hidden">
+            <button
+              type="button"
+              onClick={() => setShowMobileTree(true)}
+              className="inline-flex items-center rounded border border-[#2f3750] bg-[#202739] px-3 py-1.5 text-sm text-[#dbe5ff] hover:bg-[#2a3450]"
+            >
+              打开目录树
+            </button>
+          </div>
           {activePost ? (
             <>
               <header className="mb-6">
@@ -136,6 +484,50 @@ export default function BlogListPage({
               >
                 <Streamdown mode="static">{activePost.content}</Streamdown>
               </div>
+
+              <nav className="mt-10 grid gap-3 border-t border-[#2f3750] pt-6 sm:grid-cols-2">
+                {prevPost ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate({
+                        to: '/blog/$hashid',
+                        params: { hashid: prevPost.hashid },
+                      })
+                    }
+                    className="rounded-lg border border-[#2f3750] bg-[#12182a] px-4 py-3 text-left text-sm text-[#b1bcda] transition-colors hover:border-[#3c4668] hover:text-[#e7ecff]"
+                  >
+                    <span className="mb-1 block text-xs text-[#8f9bbd]">上一篇</span>
+                    <span className="line-clamp-2 block">{prevPost.title}</span>
+                  </button>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-[#2f3750] px-4 py-3 text-sm text-[#6f7b9b]">
+                    <span className="mb-1 block text-xs">上一篇</span>
+                    <span>已经是最新一篇</span>
+                  </div>
+                )}
+
+                {nextPost ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate({
+                        to: '/blog/$hashid',
+                        params: { hashid: nextPost.hashid },
+                      })
+                    }
+                    className="rounded-lg border border-[#2f3750] bg-[#12182a] px-4 py-3 text-right text-sm text-[#b1bcda] transition-colors hover:border-[#3c4668] hover:text-[#e7ecff]"
+                  >
+                    <span className="mb-1 block text-xs text-[#8f9bbd]">下一篇</span>
+                    <span className="line-clamp-2 block">{nextPost.title}</span>
+                  </button>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-[#2f3750] px-4 py-3 text-right text-sm text-[#6f7b9b]">
+                    <span className="mb-1 block text-xs">下一篇</span>
+                    <span>已经是最后一篇</span>
+                  </div>
+                )}
+              </nav>
             </>
           ) : activeImage ? (
             <div className="space-y-4">
@@ -163,7 +555,7 @@ export default function BlogListPage({
         </section>
 
         {showToc ? (
-          <aside className="blog-col-right blog-side-panel">
+          <aside className={cn('blog-col-right blog-side-panel', activePane === 'right' && 'pane-focused')}>
             <p className="toc-panel-title">本页目录</p>
             <ul className="toc-list">
               {toc.map((item) => (
@@ -173,6 +565,7 @@ export default function BlogListPage({
                     'toc-item',
                     item.level === 3 && 'toc-item-child',
                     activeTocId === item.id && 'toc-item-active',
+                    focusedTocId === item.id && activePane === 'right' && 'toc-item-focused',
                   )}
                 >
                   <a
