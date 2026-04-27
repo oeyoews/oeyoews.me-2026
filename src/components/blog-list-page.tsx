@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Streamdown } from 'streamdown'
-import type { BlogPost, BlogPostMeta } from '../blog/posts'
+import type { BlogImage, BlogPost, BlogTreeItem } from '../blog/posts'
 import BlogFileTree from './blog-file-tree'
 import VscodeActivityBar from './vscode-activity-bar'
 import { cn } from '@/lib/utils'
 
 type BlogListPageProps = {
-  posts: BlogPostMeta[]
+  treeItems: BlogTreeItem[]
   activePost?: BlogPost
+  activeImage?: BlogImage
   toc?: Array<{ level: 2 | 3; text: string; id: string }>
 }
 
@@ -22,10 +23,15 @@ function toHeadingId(text: string) {
   return normalized || 'section'
 }
 
-export default function BlogListPage({ posts, activePost, toc = [] }: BlogListPageProps) {
+export default function BlogListPage({
+  treeItems,
+  activePost,
+  activeImage,
+  toc = [],
+}: BlogListPageProps) {
   const contentRef = useRef<HTMLDivElement>(null)
   const tocClickLockUntilRef = useRef(0)
-  const showToc = toc.length > 1
+  const showToc = Boolean(activePost) && toc.length > 1
   const [activeTocId, setActiveTocId] = useState<string>('')
 
   const scrollToHeading = (id: string) => {
@@ -41,7 +47,10 @@ export default function BlogListPage({ posts, activePost, toc = [] }: BlogListPa
   }
 
   useEffect(() => {
-    if (!activePost) return
+    if (!activePost) {
+      setActiveTocId('')
+      return
+    }
     const root = contentRef.current
     if (!root) return
 
@@ -97,12 +106,8 @@ export default function BlogListPage({ posts, activePost, toc = [] }: BlogListPa
             <VscodeActivityBar active="files" />
             <div className="vscode-explorer-content">
               <BlogFileTree
-                items={posts.map((post) => ({
-                  hashid: post.hashid,
-                  treePath: post.treePath,
-                  sourcePath: post.sourcePath,
-                }))}
-                currentHashid={activePost?.meta.hashid}
+                items={treeItems}
+                currentHashid={activePost?.meta.hashid ?? activeImage?.meta.hashid}
               />
             </div>
           </div>
@@ -132,6 +137,23 @@ export default function BlogListPage({ posts, activePost, toc = [] }: BlogListPa
                 <Streamdown mode="static">{activePost.content}</Streamdown>
               </div>
             </>
+          ) : activeImage ? (
+            <div className="space-y-4">
+              <header>
+                <h1 className="m-0 text-[32px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff]">
+                  {activeImage.meta.title}
+                </h1>
+                <p className="mt-3 text-[12px] text-[#9aa6c5]">{activeImage.meta.sourcePath}</p>
+              </header>
+              <div className="overflow-hidden rounded-lg border border-[#2f3750] bg-[#161b27] p-2">
+                <img
+                  src={activeImage.imageUrl}
+                  alt={activeImage.meta.title}
+                  className="mx-auto block max-h-[75dvh] w-auto max-w-full rounded"
+                  loading="lazy"
+                />
+              </div>
+            </div>
           ) : (
             <div className="space-y-4">
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">博客文章</h1>

@@ -14,6 +14,24 @@ export type BlogPost = {
   content: string
 }
 
+export type BlogImageMeta = {
+  title: string
+  hashid: string
+  treePath: string
+  sourcePath: string
+}
+
+export type BlogImage = {
+  meta: BlogImageMeta
+  imageUrl: string
+}
+
+export type BlogTreeItem = {
+  hashid: string
+  treePath: string
+  sourcePath: string
+}
+
 type FrontmatterParseResult = {
   data: Record<string, unknown>
   content: string
@@ -31,8 +49,10 @@ function toRelativeContentPath(path: string) {
   return normalized.slice(idx + marker.length)
 }
 
-function toBlogTreePath(relativeContentPath: string) {
-  return relativeContentPath.replace(/^blog\//, '').replace(/\.md$/, '')
+function toBlogTreePath(relativeContentPath: string, options?: { stripMarkdownExt?: boolean }) {
+  const pathWithoutPrefix = relativeContentPath.replace(/^blog\//, '')
+  if (options?.stripMarkdownExt) return pathWithoutPrefix.replace(/\.md$/, '')
+  return pathWithoutPrefix
 }
 
 function fnv1aHash(input: string) {
@@ -44,8 +64,8 @@ function fnv1aHash(input: string) {
   return hash >>> 0
 }
 
-function createHashIdFromTreePath(treePath: string) {
-  return fnv1aHash(treePath).toString(36)
+function createHashIdFromPath(path: string) {
+  return fnv1aHash(path).toString(36)
 }
 
 function compareByDateDesc(a: BlogPostMeta, b: BlogPostMeta) {
@@ -89,15 +109,20 @@ const rawPosts = import.meta.glob('../content/**/*.md', {
   import: 'default',
 }) as Record<string, string>
 
-const parsed = Object.entries(rawPosts).map(([path, raw]) => {
+const rawImages = import.meta.glob('../content/**/*.{png,jpg,jpeg,gif,webp,avif,svg}', {
+  eager: true,
+  import: 'default',
+}) as Record<string, string>
+
+const parsedPosts = Object.entries(rawPosts).map(([path, raw]) => {
   const relativeContentPath = toRelativeContentPath(path)
   const isBlogPost = relativeContentPath.startsWith('blog/')
 
   if (!isBlogPost) return undefined
 
   const fm = parseFrontmatter(raw)
-  const treePath = toBlogTreePath(relativeContentPath)
-  const hashid = createHashIdFromTreePath(treePath)
+  const treePath = toBlogTreePath(relativeContentPath, { stripMarkdownExt: true })
+  const hashid = createHashIdFromPath(relativeContentPath)
 
   const title =
     typeof fm.data?.title === 'string' && fm.data.title.trim()
@@ -127,11 +152,42 @@ const parsed = Object.entries(rawPosts).map(([path, raw]) => {
   return { meta, content } satisfies BlogPost
 }).filter((item): item is BlogPost => Boolean(item))
 
-export const allPosts: BlogPostMeta[] = parsed
-  .map((p) => p.meta)
-  .sort(compareByDateDesc)
+const parsedImages = Object.entries(rawImages).map(([path, imageUrl]) => {
+  const relativeContentPath = toRelativeContentPath(path)
+  const isBlogAsset = relativeContentPath.startsWith('blog/')
+  if (!isBlogAsset) return undefined
+
+  const treePath = toBlogTreePath(relativeContentPath)
+  const hashid = createHashIdFromPath(relativeContentPath)
+  const filename = treePath.split('/').pop() ?? treePath
+  const title = filename.replace(/\.[^.]+$/, '')
+
+  return {
+    meta: {
+      title,
+      hashid,
+      treePath,
+      sourcePath: relativeContentPath,
+    },
+    imageUrl,
+  } satisfies BlogImage
+}).filter((item): item is BlogImage => Boolean(item))
+
+export const allPosts: BlogPostMeta[] = parsedPosts.map((p) => p.meta).sort(compareByDateDesc)
+
+export const allTreeItems: BlogTreeItem[] = [...parsedPosts.map((p) => p.meta), ...parsedImages.map((i) => i.meta)]
+  .sort((a, b) => a.treePath.localeCompare(b.treePath))
+  .map((item) => ({
+    hashid: item.hashid,
+    treePath: item.treePath,
+    sourcePath: item.sourcePath,
+  }))
 
 export function getPostByHashid(hashid: string): BlogPost | undefined {
-  return parsed.find((p) => p.meta.hashid === hashid)
+  return parsedPosts.find((p) => p.meta.hashid === hashid)
+}
+
+export function getImageByHashid(hashid: string): BlogImage | undefined {
+  return parsedImages.find((image) => image.meta.hashid === hashid)
 }
 

@@ -1,5 +1,5 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { allPosts, getPostByHashid } from '../../blog/posts'
+import { allTreeItems, getImageByHashid, getPostByHashid } from '../../blog/posts'
 import BlogListPage from '../../components/blog-list-page'
 
 type TocItem = {
@@ -51,22 +51,24 @@ function extractToc(content: string): TocItem[] {
 export const Route = createFileRoute('/blog/$hashid')({
   loader: ({ params }) => {
     const activePost = getPostByHashid(params.hashid)
-    if (!activePost) throw notFound()
+    const activeImage = activePost ? undefined : getImageByHashid(params.hashid)
+    if (!activePost && !activeImage) throw notFound()
 
     return {
-      posts: allPosts,
+      treeItems: allTreeItems,
       activePost,
-      toc: extractToc(activePost.content),
+      activeImage,
+      toc: activePost ? extractToc(activePost.content) : [],
     }
   },
   head: ({ loaderData }) => {
     if (!loaderData) return {}
+    const title = loaderData.activePost?.meta.title ?? loaderData.activeImage?.meta.title ?? 'Blog'
+    const description = loaderData.activePost?.meta.description
     return {
       meta: [
-        { title: loaderData.activePost.meta.title },
-        ...(loaderData.activePost.meta.description
-          ? [{ name: 'description', content: loaderData.activePost.meta.description }]
-          : []),
+        { title },
+        ...(description ? [{ name: 'description', content: description }] : []),
       ],
     }
   },
@@ -74,6 +76,13 @@ export const Route = createFileRoute('/blog/$hashid')({
 })
 
 function BlogPostPage() {
-  const { posts, activePost, toc } = Route.useLoaderData()
-  return <BlogListPage posts={posts} activePost={activePost} toc={Array.isArray(toc) ? toc : []} />
+  const { treeItems, activePost, activeImage, toc } = Route.useLoaderData()
+  return (
+    <BlogListPage
+      treeItems={treeItems}
+      activePost={activePost}
+      activeImage={activeImage}
+      toc={Array.isArray(toc) ? toc : []}
+    />
+  )
 }

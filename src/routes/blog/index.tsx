@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { allPosts, getPostByHashid } from '../../blog/posts'
+import { allPosts, allTreeItems, getPostByHashid } from '../../blog/posts'
 import BlogListPage from '../../components/blog-list-page'
 
 type TocItem = {
@@ -53,7 +53,7 @@ export const Route = createFileRoute('/blog/')({
     const activePostMeta = allPosts[0]
     const activePost = activePostMeta ? getPostByHashid(activePostMeta.hashid) : undefined
     return {
-      posts: allPosts,
+      treeItems: allTreeItems,
       activePost,
       toc: activePost ? extractToc(activePost.content) : [],
     }
@@ -65,7 +65,13 @@ export const Route = createFileRoute('/blog/')({
 })
 
 function BlogIndexPage() {
-  const { posts, activePost, toc } = Route.useLoaderData()
-  return <BlogListPage posts={posts} activePost={activePost} toc={Array.isArray(toc) ? toc : []} />
+  const { treeItems, activePost, toc } = Route.useLoaderData()
+  return (
+    <BlogListPage
+      treeItems={treeItems}
+      activePost={activePost}
+      toc={Array.isArray(toc) ? toc : []}
+    />
+  )
 }
 

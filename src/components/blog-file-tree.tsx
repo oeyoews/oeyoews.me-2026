@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { ChevronRight, FileCode2, FileText, Folder, FolderOpen } from 'lucide-react'
+import { ChevronRight, FileCode2, FileImage, FileText, Folder, FolderOpen } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -30,6 +30,10 @@ function getFileExtension(path: string) {
   const filename = path.split('/').pop() ?? path
   const match = filename.match(/\.([a-z0-9]+)$/i)
   return match ? match[1].toLowerCase() : undefined
+}
+
+function isImageExtension(extension?: string) {
+  return Boolean(extension && ['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg'].includes(extension))
 }
 
 function buildTree(items: Array<{ hashid: string; treePath: string; sourcePath: string }>) {
@@ -98,7 +102,7 @@ function NodeItem({
 
   if (isFile && node.hashid) {
     const isActive = currentHashid === node.hashid
-    const FileIcon = node.extension === 'md' ? FileCode2 : FileText
+    const FileIcon = node.extension === 'md' ? FileCode2 : isImageExtension(node.extension) ? FileImage : FileText
     return (
       <li>
         <Link
