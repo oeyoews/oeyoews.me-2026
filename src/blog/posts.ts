@@ -79,9 +79,8 @@ function toRelativeContentPath(path: string) {
 }
 
 function toBlogTreePath(relativeContentPath: string, options?: { stripMarkdownExt?: boolean }) {
-  const pathWithoutPrefix = relativeContentPath.replace(/^blog\//, '')
-  if (options?.stripMarkdownExt) return pathWithoutPrefix.replace(/\.md$/, '')
-  return pathWithoutPrefix
+  if (options?.stripMarkdownExt) return relativeContentPath.replace(/\.md$/, '')
+  return relativeContentPath
 }
 
 function fnv1aHash(input: string) {
@@ -132,22 +131,19 @@ function parseFrontmatter(raw: string): FrontmatterParseResult {
   }
 }
 
-const rawPosts = import.meta.glob('../content/**/*.md', {
+const rawPosts = import.meta.glob('../../content/**/*.md', {
   eager: true,
   query: '?raw',
   import: 'default',
 }) as Record<string, string>
 
-const rawImages = import.meta.glob('../content/**/*.{png,jpg,jpeg,gif,webp,avif,svg}', {
+const rawImages = import.meta.glob('../../content/**/*.{png,jpg,jpeg,gif,webp,avif,svg}', {
   eager: true,
   import: 'default',
 }) as Record<string, string>
 
 const parsedPosts = Object.entries(rawPosts).map(([path, raw]) => {
   const relativeContentPath = toRelativeContentPath(path)
-  const isBlogPost = relativeContentPath.startsWith('blog/')
-
-  if (!isBlogPost) return undefined
 
   const fm = parseFrontmatter(raw)
   const treePath = toBlogTreePath(relativeContentPath, { stripMarkdownExt: true })
@@ -183,8 +179,6 @@ const parsedPosts = Object.entries(rawPosts).map(([path, raw]) => {
 
 const parsedImages = Object.entries(rawImages).map(([path, imageUrl]) => {
   const relativeContentPath = toRelativeContentPath(path)
-  const isBlogAsset = relativeContentPath.startsWith('blog/')
-  if (!isBlogAsset) return undefined
 
   const treePath = toBlogTreePath(relativeContentPath)
   const hashid = createHashIdFromPath(relativeContentPath)
