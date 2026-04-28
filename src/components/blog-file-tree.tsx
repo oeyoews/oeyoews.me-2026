@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import {
   ChevronRight,
+  Monitor,
 } from 'lucide-react'
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { cn } from '@/lib/utils'
@@ -256,15 +257,8 @@ export default function BlogFileTree({
   return (
     <aside className="flex h-full max-h-dvh min-h-0 flex-col">
       <p className="explorer-heading flex w-full items-center gap-1.5">
-        <img
-          src="/default_folder.svg"
-          alt=""
-          aria-hidden="true"
-          className="size-4 shrink-0"
-          loading="lazy"
-          decoding="async"
-        />
-        <span>博客目录</span>
+        <Monitor aria-hidden="true" className="size-4 shrink-0 text-sky-400" />
+        <span>文件夹</span>
       </p>
       <ul className="explorer-tree-list min-h-0 flex-1 overflow-y-auto">
         {topLevelNodes.map((node) => (

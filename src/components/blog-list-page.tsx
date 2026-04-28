@@ -433,7 +433,7 @@ export default function BlogListPage({
           className={cn('mobile-tree-drawer xl:hidden print:hidden', mobileTreeOpen && 'mobile-tree-drawer-open')}
           role="dialog"
           aria-modal="true"
-          aria-label="博客目录"
+          aria-label="目录"
         >
           <button
             type="button"
@@ -467,7 +467,7 @@ export default function BlogListPage({
             }}
           >
             <div className="flex items-center justify-between border-b border-[#2f3750] px-3 py-2">
-              <p className="text-sm font-medium text-[#dbe5ff]">博客目录</p>
+              <p className="text-sm font-medium text-[#dbe5ff]">目录</p>
               <button
                 type="button"
                 onClick={closeMobileTree}
