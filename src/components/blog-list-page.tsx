@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Streamdown } from 'streamdown'
+import { ArrowLeft, ArrowRight, CalendarDays, ListTree, PanelLeftOpen, Quote, X } from 'lucide-react'
 import type { BlogImage, BlogPost, BlogPostMeta, BlogTreeItem } from '../blog/posts'
 import BlogFileTree from './blog-file-tree'
 import VscodeActivityBar from './vscode-activity-bar'
@@ -51,6 +52,7 @@ export default function BlogListPage({
   const drawerTouchStartXRef = useRef<number | null>(null)
   const drawerTouchStartYRef = useRef<number | null>(null)
   const [showMobileTree, setShowMobileTree] = useState(false)
+  const [sidebarsHidden, setSidebarsHidden] = useState(false)
   const showToc = Boolean(activePost) && toc.length > 1
   const [activeTocId, setActiveTocId] = useState<string>('')
   const [focusedTocId, setFocusedTocId] = useState<string | undefined>(undefined)
@@ -414,9 +416,10 @@ export default function BlogListPage({
               <button
                 type="button"
                 onClick={() => setShowMobileTree(false)}
-                className="rounded px-2 py-1 text-xs text-[#9aa6c5] hover:bg-[#2a3450] hover:text-[#e4eafd]"
+                className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-[#9aa6c5] hover:bg-[#2a3450] hover:text-[#e4eafd]"
               >
-                关闭
+                <X className="size-3.5 shrink-0" />
+                <span>关闭</span>
               </button>
             </div>
             <div className="h-[calc(100%-41px)] overflow-y-auto">
@@ -434,129 +437,164 @@ export default function BlogListPage({
         </div>
       ) : null}
 
-      <div className={cn('main-grid', !showToc && 'main-grid-no-toc')}>
-        <div className={cn('blog-side-panel', activePane === 'left' && 'pane-focused')}>
+      <div
+        className={cn(
+          'main-grid',
+          !showToc && !sidebarsHidden && 'main-grid-no-toc',
+          sidebarsHidden && 'main-grid-focus-mode',
+        )}
+      >
+        <div className={cn('blog-side-panel', sidebarsHidden && 'blog-side-panel-focus', activePane === 'left' && !sidebarsHidden && 'pane-focused')}>
           <div className="vscode-explorer-shell">
-            <VscodeActivityBar active="files" />
-            <div className="vscode-explorer-content">
-              <BlogFileTree
-                items={treeItems}
-                currentHashid={currentHashid}
-                focusedHashid={focusedHashid}
-                focusedTreePath={focusedTreePath}
-                toggleDirectoryRequest={toggleDirectoryRequest}
-                onOpenPathsChange={setOpenDirectoryPaths}
-                onSelectFile={() => setShowMobileTree(false)}
-              />
-            </div>
+            <VscodeActivityBar
+              active="files"
+              sidebarsHidden={sidebarsHidden}
+              onToggleSidebars={() => setSidebarsHidden((prev) => !prev)}
+            />
+            {!sidebarsHidden ? (
+              <div className="vscode-explorer-content">
+                <BlogFileTree
+                  items={treeItems}
+                  currentHashid={currentHashid}
+                  focusedHashid={focusedHashid}
+                  focusedTreePath={focusedTreePath}
+                  toggleDirectoryRequest={toggleDirectoryRequest}
+                  onOpenPathsChange={setOpenDirectoryPaths}
+                  onSelectFile={() => setShowMobileTree(false)}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
 
         <section className="blog-col-main">
-          <div className="mb-4 xl:hidden">
-            <button
-              type="button"
-              onClick={() => setShowMobileTree(true)}
-              className="inline-flex items-center rounded border border-[#2f3750] bg-[#202739] px-3 py-1.5 text-sm text-[#dbe5ff] hover:bg-[#2a3450]"
-            >
-              打开目录树
-            </button>
-          </div>
-          {activePost ? (
-            <>
-              <header className="mb-6">
-                <h1 className="m-0 text-[44px] leading-[1.15] font-semibold tracking-tight text-[#e7ecff]">
-                  {activePost.meta.title}
-                </h1>
-                <p className="mt-3 text-[12px] text-[#9aa6c5]">
-                  <time>{activePost.meta.date}</time>
-                </p>
-                {activePost.meta.description ? (
-                  <p className="mt-3 text-[14px] leading-7 text-[#b1bcda]">
-                    {activePost.meta.description}
-                  </p>
-                ) : null}
-              </header>
-
-              <div
-                ref={contentRef}
-                className="blog-article-content prose prose-slate max-w-none dark:prose-invert prose-headings:text-foreground/85 prose-p:text-foreground/70 prose-li:text-foreground/70"
+          <div className="blog-main-inner">
+            <div className="mb-4 xl:hidden">
+              <button
+                type="button"
+                onClick={() => setShowMobileTree(true)}
+                className="inline-flex items-center gap-1.5 rounded border border-[#2f3750] bg-[#202739] px-3 py-1.5 text-sm text-[#dbe5ff] hover:bg-[#2a3450]"
               >
-                <Streamdown mode="static">{activePost.content}</Streamdown>
-              </div>
-
-              <nav className="mt-10 grid gap-3 border-t border-[#2f3750] pt-6 sm:grid-cols-2">
-                {prevPost ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate({
-                        to: '/blog/$hashid',
-                        params: { hashid: prevPost.hashid },
-                      })
-                    }
-                    className="rounded-lg border border-[#2f3750] bg-[#12182a] px-4 py-3 text-left text-sm text-[#b1bcda] transition-colors hover:border-[#3c4668] hover:text-[#e7ecff]"
-                  >
-                    <span className="mb-1 block text-xs text-[#8f9bbd]">上一篇</span>
-                    <span className="line-clamp-2 block">{prevPost.title}</span>
-                  </button>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-[#2f3750] px-4 py-3 text-sm text-[#6f7b9b]">
-                    <span className="mb-1 block text-xs">上一篇</span>
-                    <span>已经是最新一篇</span>
-                  </div>
-                )}
-
-                {nextPost ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate({
-                        to: '/blog/$hashid',
-                        params: { hashid: nextPost.hashid },
-                      })
-                    }
-                    className="rounded-lg border border-[#2f3750] bg-[#12182a] px-4 py-3 text-right text-sm text-[#b1bcda] transition-colors hover:border-[#3c4668] hover:text-[#e7ecff]"
-                  >
-                    <span className="mb-1 block text-xs text-[#8f9bbd]">下一篇</span>
-                    <span className="line-clamp-2 block">{nextPost.title}</span>
-                  </button>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-[#2f3750] px-4 py-3 text-right text-sm text-[#6f7b9b]">
-                    <span className="mb-1 block text-xs">下一篇</span>
-                    <span>已经是最后一篇</span>
-                  </div>
-                )}
-              </nav>
-            </>
-          ) : activeImage ? (
-            <div className="space-y-4">
-              <header>
-                <h1 className="m-0 text-[32px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff]">
-                  {activeImage.meta.title}
-                </h1>
-                <p className="mt-3 text-[12px] text-[#9aa6c5]">{activeImage.meta.sourcePath}</p>
-              </header>
-              <div className="overflow-hidden rounded-lg border border-[#2f3750] bg-[#161b27] p-2">
-                <img
-                  src={activeImage.imageUrl}
-                  alt={activeImage.meta.title}
-                  className="mx-auto block max-h-[75dvh] w-auto max-w-full rounded"
-                  loading="lazy"
-                />
-              </div>
+                <PanelLeftOpen className="size-4 shrink-0" />
+                <span>打开目录树</span>
+              </button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">博客文章</h1>
-              <p className="text-sm text-muted-foreground">暂无可预览文章</p>
-            </div>
-          )}
+            {activePost ? (
+              <>
+                <header className="mb-6">
+                  <h1 className="m-0 text-[32px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] xl:text-[36px]">
+                    {activePost.meta.title}
+                  </h1>
+                  <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-[#9aa6c5]">
+                    <CalendarDays className="size-3.5 shrink-0" />
+                    <time>{activePost.meta.date}</time>
+                  </p>
+                  {activePost.meta.description ? (
+                    <p className="mt-4 inline-flex w-full items-start gap-2 rounded-md border border-[#2a3450] bg-[#131b2c] px-3 py-2 text-[13px] leading-6 text-[#b7c2df]">
+                      <Quote className="mt-1 size-3 shrink-0 text-[#7f8aac]" />
+                      <span>{activePost.meta.description}</span>
+                    </p>
+                  ) : null}
+                </header>
+
+                <div
+                  key={activePost.meta.hashid}
+                  ref={contentRef}
+                  className="blog-article-content prose prose-slate max-w-none dark:prose-invert prose-headings:text-foreground/85 prose-p:text-foreground/70 prose-li:text-foreground/70"
+                >
+                  <Streamdown key={activePost.meta.hashid} mode="static">
+                    {activePost.content}
+                  </Streamdown>
+                </div>
+
+                <nav className="mt-10 grid gap-3 border-t border-[#2f3750] pt-6 sm:grid-cols-2">
+                  {prevPost ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate({
+                          to: '/blog/$hashid',
+                          params: { hashid: prevPost.hashid },
+                        })
+                      }
+                      className="rounded-lg border border-[#2f3750] bg-[#12182a] px-4 py-3 text-left text-sm text-[#b1bcda] transition-colors hover:border-[#3c4668] hover:text-[#e7ecff]"
+                    >
+                      <span className="mb-1 inline-flex items-center gap-1 text-xs text-[#8f9bbd]">
+                        <ArrowLeft className="size-3.5 shrink-0" />
+                        <span>上一篇</span>
+                      </span>
+                      <span className="line-clamp-2 block">{prevPost.title}</span>
+                    </button>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-[#2f3750] bg-[#101624] px-4 py-3 text-sm text-[#7f8aac]">
+                      <span className="mb-1 inline-flex items-center gap-1 text-xs text-[#8f9bbd]">
+                        <ArrowLeft className="size-3.5 shrink-0 opacity-80" />
+                        <span>上一篇</span>
+                      </span>
+                      <span className="block text-[#7f8aac]">已经是最新一篇</span>
+                    </div>
+                  )}
+
+                  {nextPost ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate({
+                          to: '/blog/$hashid',
+                          params: { hashid: nextPost.hashid },
+                        })
+                      }
+                      className="rounded-lg border border-[#2f3750] bg-[#12182a] px-4 py-3 text-right text-sm text-[#b1bcda] transition-colors hover:border-[#3c4668] hover:text-[#e7ecff]"
+                    >
+                      <span className="mb-1 inline-flex items-center gap-1 text-xs text-[#8f9bbd]">
+                        <span>下一篇</span>
+                        <ArrowRight className="size-3.5 shrink-0" />
+                      </span>
+                      <span className="line-clamp-2 block">{nextPost.title}</span>
+                    </button>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-[#2f3750] bg-[#101624] px-4 py-3 text-right text-sm text-[#7f8aac]">
+                      <span className="mb-1 inline-flex items-center gap-1 text-xs text-[#8f9bbd]">
+                        <span>下一篇</span>
+                        <ArrowRight className="size-3.5 shrink-0 opacity-80" />
+                      </span>
+                      <span className="block text-[#7f8aac]">已经是最后一篇</span>
+                    </div>
+                  )}
+                </nav>
+              </>
+            ) : activeImage ? (
+              <div className="space-y-4">
+                <header>
+                  <h1 className="m-0 text-[32px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff]">
+                    {activeImage.meta.title}
+                  </h1>
+                  <p className="mt-3 text-[12px] text-[#9aa6c5]">{activeImage.meta.sourcePath}</p>
+                </header>
+                <div className="overflow-hidden rounded-lg border border-[#2f3750] bg-[#161b27] p-2">
+                  <img
+                    src={activeImage.imageUrl}
+                    alt={activeImage.meta.title}
+                    className="mx-auto block max-h-[75dvh] w-auto max-w-full rounded"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">博客文章</h1>
+                <p className="text-sm text-muted-foreground">暂无可预览文章</p>
+              </div>
+            )}
+          </div>
         </section>
 
-        {showToc ? (
+        {showToc && !sidebarsHidden ? (
           <aside className={cn('blog-col-right blog-side-panel', activePane === 'right' && 'pane-focused')}>
-            <p className="toc-panel-title">本页目录</p>
+            <p className="toc-panel-title flex w-full items-center gap-1.5">
+              <ListTree className="size-4 shrink-0" />
+              <span>本页目录</span>
+            </p>
             <ul className="toc-list">
               {toc.map((item) => (
                 <li

@@ -1,5 +1,13 @@
 import { Link } from '@tanstack/react-router'
-import { ChevronRight, FileCode2, FileImage, FileText, Folder, FolderOpen } from 'lucide-react'
+import {
+  ChevronRight,
+  FileCode2,
+  FileImage,
+  FileText,
+  Folder,
+  FolderOpen,
+  FolderTree,
+} from 'lucide-react'
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -87,6 +95,17 @@ function toLabel(name: string) {
   return name.replace(/[-_]/g, ' ')
 }
 
+function compareTreeNodes(a: TreeNode, b: TreeNode) {
+  const aIsIndex = a.name.toLowerCase() === 'index'
+  const bIsIndex = b.name.toLowerCase() === 'index'
+  if (aIsIndex && !bIsIndex) return -1
+  if (!aIsIndex && bIsIndex) return 1
+
+  if (a.hashid && !b.hashid) return 1
+  if (!a.hashid && b.hashid) return -1
+  return a.name.localeCompare(b.name)
+}
+
 function NodeItem({
   node,
   currentHashid,
@@ -107,11 +126,7 @@ function NodeItem({
   path?: string
 }) {
   const isFile = Boolean(node.hashid)
-  const children = Array.from(node.children.values()).sort((a, b) => {
-    if (a.hashid && !b.hashid) return 1
-    if (!a.hashid && b.hashid) return -1
-    return a.name.localeCompare(b.name)
-  })
+  const children = Array.from(node.children.values()).sort(compareTreeNodes)
 
   const nodePath = path ? `${path}/${node.name}` : node.name
   const isFocusedPath = focusedTreePath === nodePath
@@ -228,15 +243,14 @@ export default function BlogFileTree({
   useEffect(() => {
     onOpenPathsChange?.(Array.from(openPaths))
   }, [onOpenPathsChange, openPaths])
-  const topLevelNodes = Array.from(tree.children.values()).sort((a, b) => {
-    if (a.hashid && !b.hashid) return 1
-    if (!a.hashid && b.hashid) return -1
-    return a.name.localeCompare(b.name)
-  })
+  const topLevelNodes = Array.from(tree.children.values()).sort(compareTreeNodes)
 
   return (
     <aside>
-      <p className="explorer-heading">博客目录</p>
+      <p className="explorer-heading flex w-full items-center gap-1.5">
+        <FolderTree className="size-4 shrink-0" />
+        <span>博客目录</span>
+      </p>
       <ul className="explorer-tree-list">
         {topLevelNodes.map((node) => (
           <NodeItem

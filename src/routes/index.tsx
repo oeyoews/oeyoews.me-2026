@@ -4,7 +4,7 @@ import BlogListPage from '../components/blog-list-page'
 
 export const Route = createFileRoute('/')({
   loader: () => {
-    const activePostMeta = allPosts[0]
+    const activePostMeta = allPosts.find((post) => post.sourcePath === 'index.md') ?? allPosts[0]
     const activePost = activePostMeta ? getPostByHashid(activePostMeta.hashid) : undefined
     return {
       posts: allPosts,

@@ -50,7 +50,7 @@ function extractToc(content: string): TocItem[] {
 
 export const Route = createFileRoute('/blog/')({
   loader: () => {
-    const activePostMeta = allPosts[0]
+    const activePostMeta = allPosts.find((post) => post.sourcePath === 'index.md') ?? allPosts[0]
     const activePost = activePostMeta ? getPostByHashid(activePostMeta.hashid) : undefined
     return {
       posts: allPosts,

@@ -123,6 +123,11 @@
     @apply xl:grid-cols-[300px_minmax(0,1fr)];
   }
 
+  .main-grid-focus-mode {
+    @apply xl:grid-cols-[48px_minmax(0,1fr)];
+    background: #1f2638;
+  }
+
   .main-grid > * {
     min-width: 0;
   }
@@ -132,8 +137,14 @@
   }
 
   .blog-col-main {
-    @apply h-dvh min-w-0 overflow-y-auto bg-[#1f2638] px-5 py-5 xl:border-x xl:px-6;
+    @apply h-dvh min-w-0 overflow-y-auto bg-[#1f2638] px-5 pt-2 pb-5 xl:border-x xl:px-6;
     border-color: #2f3750;
+  }
+
+  .blog-col-main-centered {
+    @apply xl:border-x-0;
+    justify-self: center;
+    width: min(100%, 980px);
   }
 
   .blog-col-right {
@@ -143,6 +154,10 @@
   .blog-side-panel {
     @apply hidden xl:block xl:h-full xl:overflow-hidden;
     background: #202739;
+  }
+
+  .blog-side-panel-focus {
+    background: #171d2b;
   }
 
   .blog-col-right.blog-side-panel {
@@ -158,7 +173,7 @@
   }
 
   .vscode-activity-bar {
-    @apply flex w-12 flex-col items-center justify-between border-r py-2;
+    @apply flex w-12 flex-col items-center justify-between border-r pb-2;
     border-color: #2f3750;
     background: #171d2b;
   }
@@ -168,7 +183,7 @@
   }
 
   .vscode-activity-button {
-    @apply inline-flex size-9 items-center justify-center rounded-md text-[#7f8eb3] transition-colors hover:bg-[#25314b] hover:text-[#dbe5ff];
+    @apply inline-flex size-8 items-center justify-center rounded-md text-[#7f8eb3] transition-colors hover:bg-[#25314b] hover:text-[#dbe5ff];
   }
 
   .vscode-activity-button-active {
@@ -208,6 +223,10 @@
   .blog-article-content :where(p, li, blockquote, a, td, th) {
     overflow-wrap: anywhere;
     word-break: break-word;
+  }
+
+  .blog-main-inner {
+    @apply mx-auto w-full max-w-[1100px];
   }
 
   .blog-article-content pre {

@@ -96,7 +96,17 @@ function createHashIdFromPath(path: string) {
   return fnv1aHash(path).toString(36)
 }
 
+const ENTRY_SOURCE_PATH = 'index.md'
+
+function isEntryItem(sourcePath: string) {
+  return sourcePath === ENTRY_SOURCE_PATH
+}
+
 function compareByDateDesc(a: BlogPostMeta, b: BlogPostMeta) {
+  if (isEntryItem(a.sourcePath) !== isEntryItem(b.sourcePath)) {
+    return isEntryItem(a.sourcePath) ? -1 : 1
+  }
+
   const aTime = Date.parse(a.date)
   const bTime = Date.parse(b.date)
   if (Number.isNaN(aTime) || Number.isNaN(bTime)) {
@@ -199,7 +209,12 @@ const parsedImages = Object.entries(rawImages).map(([path, imageUrl]) => {
 export const allPosts: BlogPostMeta[] = parsedPosts.map((p) => p.meta).sort(compareByDateDesc)
 
 export const allTreeItems: BlogTreeItem[] = [...parsedPosts.map((p) => p.meta), ...parsedImages.map((i) => i.meta)]
-  .sort((a, b) => a.treePath.localeCompare(b.treePath))
+  .sort((a, b) => {
+    if (isEntryItem(a.sourcePath) !== isEntryItem(b.sourcePath)) {
+      return isEntryItem(a.sourcePath) ? -1 : 1
+    }
+    return a.treePath.localeCompare(b.treePath)
+  })
   .map((item) => ({
     hashid: item.hashid,
     treePath: item.treePath,
