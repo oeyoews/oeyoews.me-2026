@@ -1,5 +1,3 @@
-import yaml from 'js-yaml'
-
 export type BlogPostMeta = {
   title: string
   date: string
@@ -35,6 +33,37 @@ export type BlogTreeItem = {
 type FrontmatterParseResult = {
   data: Record<string, unknown>
   content: string
+}
+
+function parseFrontmatterValue(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+
+  const quotedMatch = trimmed.match(/^(['"])([\s\S]*)\1$/)
+  if (quotedMatch) return quotedMatch[2]
+
+  return trimmed
+}
+
+function parseFrontmatterObject(frontmatterSource: string): Record<string, unknown> {
+  const data: Record<string, unknown> = {}
+  const lines = frontmatterSource.split('\n')
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+
+    const separator = trimmed.indexOf(':')
+    if (separator <= 0) continue
+
+    const key = trimmed.slice(0, separator).trim()
+    const valueSource = trimmed.slice(separator + 1)
+    if (!key) continue
+
+    data[key] = parseFrontmatterValue(valueSource)
+  }
+
+  return data
 }
 
 function toRelativeContentPath(path: string) {
@@ -95,7 +124,7 @@ function parseFrontmatter(raw: string): FrontmatterParseResult {
 
   const frontmatterSource = normalized.slice(4, end)
   const rest = normalized.slice(end + 5)
-  const loaded = yaml.load(frontmatterSource)
+  const loaded = parseFrontmatterObject(frontmatterSource)
 
   return {
     data: loaded && typeof loaded === 'object' ? (loaded as Record<string, unknown>) : {},
