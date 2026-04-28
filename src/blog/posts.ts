@@ -1,5 +1,5 @@
 export type BlogPostMeta = {
-  title: string
+  title?: string
   date: string
   description?: string
   hashid: string
@@ -162,12 +162,12 @@ const parsedPosts = Object.entries(rawPosts).map(([path, raw]) => {
   const title =
     typeof fm.data?.title === 'string' && fm.data.title.trim()
       ? fm.data.title.trim()
-      : treePath
+      : undefined
 
   const date =
     typeof fm.data?.date === 'string' && fm.data.date.trim()
       ? fm.data.date.trim()
-      : '1970-01-01'
+      : ''
 
   const description =
     typeof fm.data?.description === 'string' && fm.data.description.trim()

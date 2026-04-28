@@ -1,12 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import {
   ChevronRight,
-  FileCode2,
-  FileImage,
-  FileText,
-  Folder,
-  FolderOpen,
-  FolderTree,
 } from 'lucide-react'
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { cn } from '@/lib/utils'
@@ -50,6 +44,11 @@ function getFileExtension(path: string) {
 
 function isImageExtension(extension?: string) {
   return Boolean(extension && ['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg'].includes(extension))
+}
+
+function getFileIconSrc(extension?: string) {
+  if (isImageExtension(extension)) return '/file_type_image.svg'
+  return '/file_type_markdown.svg'
 }
 
 function buildTree(items: Array<{ hashid: string; treePath: string; sourcePath: string }>) {
@@ -134,7 +133,6 @@ function NodeItem({
   if (isFile && node.hashid) {
     const isActive = currentHashid === node.hashid
     const isFocused = focusedHashid === node.hashid
-    const FileIcon = node.extension === 'md' ? FileCode2 : isImageExtension(node.extension) ? FileImage : FileText
     return (
       <li>
         <Link
@@ -148,7 +146,14 @@ function NodeItem({
             isFocusedPath && !isActive && 'explorer-row-focused',
           )}
         >
-          <FileIcon className="size-4 shrink-0" />
+          <img
+            src={getFileIconSrc(node.extension)}
+            alt=""
+            aria-hidden="true"
+            className="size-4 shrink-0"
+            loading="lazy"
+            decoding="async"
+          />
           <span className="truncate">{toLabel(node.name)}</span>
         </Link>
       </li>
@@ -177,11 +182,14 @@ function NodeItem({
         <ChevronRight
           className={cn('size-4 shrink-0 transition-transform', open && 'rotate-90')}
         />
-        {open ? (
-          <FolderOpen className="size-4 shrink-0" />
-        ) : (
-          <Folder className="size-4 shrink-0" />
-        )}
+        <img
+          src={open ? '/default_folder_opened.svg' : '/default_folder.svg'}
+          alt=""
+          aria-hidden="true"
+          className="size-4 shrink-0"
+          loading="lazy"
+          decoding="async"
+        />
         <span className="truncate">{toLabel(node.name)}</span>
       </button>
       {open && (
@@ -246,12 +254,19 @@ export default function BlogFileTree({
   const topLevelNodes = Array.from(tree.children.values()).sort(compareTreeNodes)
 
   return (
-    <aside>
+    <aside className="flex h-full max-h-dvh min-h-0 flex-col">
       <p className="explorer-heading flex w-full items-center gap-1.5">
-        <FolderTree className="size-4 shrink-0" />
+        <img
+          src="/default_folder.svg"
+          alt=""
+          aria-hidden="true"
+          className="size-4 shrink-0"
+          loading="lazy"
+          decoding="async"
+        />
         <span>博客目录</span>
       </p>
-      <ul className="explorer-tree-list">
+      <ul className="explorer-tree-list min-h-0 flex-1 overflow-y-auto">
         {topLevelNodes.map((node) => (
           <NodeItem
             key={node.name}

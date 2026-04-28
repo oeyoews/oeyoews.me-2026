@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Streamdown } from 'streamdown'
+import { createCodePlugin } from '@streamdown/code'
 import { ArrowLeft, ArrowRight, CalendarDays, ListTree, PanelLeftOpen, Quote, X } from 'lucide-react'
 import type { BlogImage, BlogPost, BlogPostMeta, BlogTreeItem } from '../blog/posts'
 import BlogFileTree from './blog-file-tree'
@@ -14,6 +15,10 @@ type BlogListPageProps = {
   activeImage?: BlogImage
   toc?: Array<{ level: 2 | 3; text: string; id: string }>
 }
+
+const code = createCodePlugin({
+  themes: ['github-light', 'one-dark-pro'],
+})
 
 function toHeadingId(text: string) {
   const normalized = text
@@ -45,13 +50,17 @@ export default function BlogListPage({
   activeImage,
   toc = [],
 }: BlogListPageProps) {
+  const MOBILE_TREE_ANIMATION_MS = 220
   const navigate = useNavigate()
   const contentRef = useRef<HTMLDivElement>(null)
   const tocClickLockUntilRef = useRef(0)
   const pendingGUntilRef = useRef(0)
   const drawerTouchStartXRef = useRef<number | null>(null)
   const drawerTouchStartYRef = useRef<number | null>(null)
+  const mobileTreeCloseTimerRef = useRef<number | null>(null)
+  const mobileTreeOpenRafRef = useRef<number | null>(null)
   const [showMobileTree, setShowMobileTree] = useState(false)
+  const [mobileTreeOpen, setMobileTreeOpen] = useState(false)
   const [sidebarsHidden, setSidebarsHidden] = useState(false)
   const showToc = Boolean(activePost) && toc.length > 1
   const [activeTocId, setActiveTocId] = useState<string>('')
@@ -134,6 +143,33 @@ export default function BlogListPage({
   const nextPost = currentPostIndex >= 0 ? posts[currentPostIndex + 1] : undefined
   const currentHashid = activePost?.meta.hashid ?? activeImage?.meta.hashid
   const tocIds = useMemo(() => toc.map((item) => item.id), [toc])
+
+  const openMobileTree = () => {
+    if (mobileTreeCloseTimerRef.current !== null) {
+      window.clearTimeout(mobileTreeCloseTimerRef.current)
+      mobileTreeCloseTimerRef.current = null
+    }
+    if (mobileTreeOpenRafRef.current !== null) {
+      window.cancelAnimationFrame(mobileTreeOpenRafRef.current)
+      mobileTreeOpenRafRef.current = null
+    }
+    setShowMobileTree(true)
+    mobileTreeOpenRafRef.current = window.requestAnimationFrame(() => {
+      setMobileTreeOpen(true)
+      mobileTreeOpenRafRef.current = null
+    })
+  }
+
+  const closeMobileTree = () => {
+    setMobileTreeOpen(false)
+    if (mobileTreeCloseTimerRef.current !== null) {
+      window.clearTimeout(mobileTreeCloseTimerRef.current)
+    }
+    mobileTreeCloseTimerRef.current = window.setTimeout(() => {
+      setShowMobileTree(false)
+      mobileTreeCloseTimerRef.current = null
+    }, MOBILE_TREE_ANIMATION_MS)
+  }
 
   const scrollToHeading = (id: string) => {
     const root = contentRef.current
@@ -302,7 +338,7 @@ export default function BlogListPage({
         if (event.key === 'j' || event.key === 'J') {
           event.preventDefault()
           const nextIndex =
-            activeIndex < 0 ? 0 : Math.min(activeIndex + 1, visibleLeftPaneEntries.length - 1)
+            activeIndex < 0 ? 0 : (activeIndex + 1) % visibleLeftPaneEntries.length
           const entry = visibleLeftPaneEntries[nextIndex]
           setFocusedTreePath(entry?.path)
           if (entry?.type === 'file' && entry.hashid) setFocusedHashid(entry.hashid)
@@ -311,7 +347,10 @@ export default function BlogListPage({
 
         if (event.key === 'k' || event.key === 'K') {
           event.preventDefault()
-          const prevIndex = activeIndex < 0 ? 0 : Math.max(activeIndex - 1, 0)
+          const prevIndex =
+            activeIndex < 0
+              ? visibleLeftPaneEntries.length - 1
+              : (activeIndex - 1 + visibleLeftPaneEntries.length) % visibleLeftPaneEntries.length
           const entry = visibleLeftPaneEntries[prevIndex]
           setFocusedTreePath(entry?.path)
           if (entry?.type === 'file' && entry.hashid) setFocusedHashid(entry.hashid)
@@ -344,14 +383,14 @@ export default function BlogListPage({
 
       if (event.key === 'j' || event.key === 'J') {
         event.preventDefault()
-        const nextIndex = focusedIndex < 0 ? 0 : Math.min(focusedIndex + 1, tocIds.length - 1)
+        const nextIndex = focusedIndex < 0 ? 0 : (focusedIndex + 1) % tocIds.length
         setFocusedTocId(tocIds[nextIndex])
         return
       }
 
       if (event.key === 'k' || event.key === 'K') {
         event.preventDefault()
-        const prevIndex = focusedIndex < 0 ? 0 : Math.max(focusedIndex - 1, 0)
+        const prevIndex = focusedIndex < 0 ? tocIds.length - 1 : (focusedIndex - 1 + tocIds.length) % tocIds.length
         setFocusedTocId(tocIds[prevIndex])
         return
       }
@@ -376,18 +415,34 @@ export default function BlogListPage({
     visibleLeftPaneEntries,
   ])
 
+  useEffect(() => {
+    return () => {
+      if (mobileTreeCloseTimerRef.current !== null) {
+        window.clearTimeout(mobileTreeCloseTimerRef.current)
+      }
+      if (mobileTreeOpenRafRef.current !== null) {
+        window.cancelAnimationFrame(mobileTreeOpenRafRef.current)
+      }
+    }
+  }, [])
+
   return (
     <main className="page-shell">
       {showMobileTree ? (
-        <div className="fixed inset-0 z-40 xl:hidden" role="dialog" aria-modal="true" aria-label="博客目录">
+        <div
+          className={cn('mobile-tree-drawer xl:hidden print:hidden', mobileTreeOpen && 'mobile-tree-drawer-open')}
+          role="dialog"
+          aria-modal="true"
+          aria-label="博客目录"
+        >
           <button
             type="button"
-            className="absolute inset-0 bg-black/45"
-            onClick={() => setShowMobileTree(false)}
+            className={cn('mobile-tree-backdrop', mobileTreeOpen && 'mobile-tree-backdrop-open')}
+            onClick={closeMobileTree}
             aria-label="关闭目录"
           />
           <div
-            className="absolute inset-y-0 left-0 w-[85vw] max-w-[360px] overflow-hidden border-r border-[#2f3750] bg-[#202739] shadow-2xl"
+            className={cn('mobile-tree-panel', mobileTreeOpen && 'mobile-tree-panel-open')}
             onTouchStart={(event) => {
               const touch = event.touches[0]
               drawerTouchStartXRef.current = touch?.clientX ?? null
@@ -401,7 +456,7 @@ export default function BlogListPage({
               const deltaY = Math.abs(touch.clientY - drawerTouchStartYRef.current)
               // Horizontal swipe right closes drawer
               if (deltaX > 60 && deltaY < 40) {
-                setShowMobileTree(false)
+                closeMobileTree()
                 drawerTouchStartXRef.current = null
                 drawerTouchStartYRef.current = null
               }
@@ -415,7 +470,7 @@ export default function BlogListPage({
               <p className="text-sm font-medium text-[#dbe5ff]">博客目录</p>
               <button
                 type="button"
-                onClick={() => setShowMobileTree(false)}
+                onClick={closeMobileTree}
                 className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-[#9aa6c5] hover:bg-[#2a3450] hover:text-[#e4eafd]"
               >
                 <X className="size-3.5 shrink-0" />
@@ -430,7 +485,7 @@ export default function BlogListPage({
                 focusedTreePath={focusedTreePath}
                 toggleDirectoryRequest={toggleDirectoryRequest}
                 onOpenPathsChange={setOpenDirectoryPaths}
-                onSelectFile={() => setShowMobileTree(false)}
+                onSelectFile={closeMobileTree}
               />
             </div>
           </div>
@@ -439,40 +494,41 @@ export default function BlogListPage({
 
       <div
         className={cn(
-          'main-grid',
+          'main-grid print:block',
           !showToc && !sidebarsHidden && 'main-grid-no-toc',
           sidebarsHidden && 'main-grid-focus-mode',
         )}
       >
-        <div className={cn('blog-side-panel', sidebarsHidden && 'blog-side-panel-focus', activePane === 'left' && !sidebarsHidden && 'pane-focused')}>
+        <div className={cn('blog-side-panel print:hidden', sidebarsHidden && 'blog-side-panel-focus', activePane === 'left' && !sidebarsHidden && 'pane-focused')}>
           <div className="vscode-explorer-shell">
             <VscodeActivityBar
               active="files"
               sidebarsHidden={sidebarsHidden}
               onToggleSidebars={() => setSidebarsHidden((prev) => !prev)}
             />
-            {!sidebarsHidden ? (
-              <div className="vscode-explorer-content">
-                <BlogFileTree
-                  items={treeItems}
-                  currentHashid={currentHashid}
-                  focusedHashid={focusedHashid}
-                  focusedTreePath={focusedTreePath}
-                  toggleDirectoryRequest={toggleDirectoryRequest}
-                  onOpenPathsChange={setOpenDirectoryPaths}
-                  onSelectFile={() => setShowMobileTree(false)}
-                />
-              </div>
-            ) : null}
+            <div
+              className={cn('vscode-explorer-content', sidebarsHidden && 'vscode-explorer-content-collapsed')}
+              aria-hidden={sidebarsHidden}
+            >
+              <BlogFileTree
+                items={treeItems}
+                currentHashid={currentHashid}
+                focusedHashid={focusedHashid}
+                focusedTreePath={focusedTreePath}
+                toggleDirectoryRequest={toggleDirectoryRequest}
+                onOpenPathsChange={setOpenDirectoryPaths}
+                onSelectFile={() => setShowMobileTree(false)}
+              />
+            </div>
           </div>
         </div>
 
-        <section className="blog-col-main">
+        <section className="blog-col-main print:h-auto print:overflow-visible print:border-0 print:bg-white print:px-0 print:pt-0 print:pb-0">
           <div className="blog-main-inner">
-            <div className="mb-4 xl:hidden">
+            <div className="mb-4 xl:hidden print:hidden">
               <button
                 type="button"
-                onClick={() => setShowMobileTree(true)}
+                onClick={openMobileTree}
                 className="inline-flex items-center gap-1.5 rounded border border-[#2f3750] bg-[#202739] px-3 py-1.5 text-sm text-[#dbe5ff] hover:bg-[#2a3450]"
               >
                 <PanelLeftOpen className="size-4 shrink-0" />
@@ -481,17 +537,21 @@ export default function BlogListPage({
             </div>
             {activePost ? (
               <>
-                <header className="mb-6">
-                  <h1 className="m-0 text-[32px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] xl:text-[36px]">
-                    {activePost.meta.title}
-                  </h1>
-                  <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-[#9aa6c5]">
-                    <CalendarDays className="size-3.5 shrink-0" />
-                    <time>{activePost.meta.date}</time>
-                  </p>
+                <header className="mb-6 print:mb-4">
+                  {activePost.meta.title ? (
+                    <h1 className="m-0 text-[32px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] print:text-black xl:text-[36px]">
+                      {activePost.meta.title}
+                    </h1>
+                  ) : null}
+                  {activePost.meta.date ? (
+                    <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-[#9aa6c5] print:text-gray-600">
+                      <CalendarDays className="size-3.5 shrink-0" />
+                      <time>{activePost.meta.date}</time>
+                    </p>
+                  ) : null}
                   {activePost.meta.description ? (
-                    <p className="mt-4 inline-flex w-full items-start gap-2 rounded-md border border-[#2a3450] bg-[#131b2c] px-3 py-2 text-[13px] leading-6 text-[#b7c2df]">
-                      <Quote className="mt-1 size-3 shrink-0 text-[#7f8aac]" />
+                    <p className="mt-4 inline-flex w-full items-start gap-2 rounded-md border border-[#2a3450] bg-[#131b2c] px-3 py-2 text-[13px] leading-6 text-[#b7c2df] print:border-gray-300 print:bg-white print:text-gray-700">
+                      <Quote className="mt-1 size-3 shrink-0 text-[#7f8aac] print:text-gray-500" />
                       <span>{activePost.meta.description}</span>
                     </p>
                   ) : null}
@@ -500,14 +560,14 @@ export default function BlogListPage({
                 <div
                   key={activePost.meta.hashid}
                   ref={contentRef}
-                  className="blog-article-content prose prose-slate max-w-none dark:prose-invert prose-headings:text-foreground/85 prose-p:text-foreground/70 prose-li:text-foreground/70"
+                  className="blog-article-content prose prose-slate max-w-none dark:prose-invert prose-headings:text-foreground/85 prose-p:text-foreground/70 prose-li:text-foreground/70 print:max-w-full print:prose-black print:prose-headings:text-black print:prose-p:text-black print:prose-li:text-black"
                 >
-                  <Streamdown key={activePost.meta.hashid} mode="static">
+                  <Streamdown key={activePost.meta.hashid} mode="static" plugins={{ code }}>
                     {activePost.content}
                   </Streamdown>
                 </div>
 
-                <nav className="mt-10 grid gap-3 border-t border-[#2f3750] pt-6 sm:grid-cols-2">
+                <nav className="mt-10 grid gap-3 border-t border-[#2f3750] pt-6 print:hidden sm:grid-cols-2">
                   {prevPost ? (
                     <button
                       type="button"
@@ -523,7 +583,9 @@ export default function BlogListPage({
                         <ArrowLeft className="size-3.5 shrink-0" />
                         <span>上一篇</span>
                       </span>
-                      <span className="line-clamp-2 block">{prevPost.title}</span>
+                      {prevPost.title ? (
+                        <span className="line-clamp-2 block">{prevPost.title}</span>
+                      ) : null}
                     </button>
                   ) : (
                     <div className="rounded-lg border border-dashed border-[#2f3750] bg-[#101624] px-4 py-3 text-sm text-[#7f8aac]">
@@ -550,7 +612,9 @@ export default function BlogListPage({
                         <span>下一篇</span>
                         <ArrowRight className="size-3.5 shrink-0" />
                       </span>
-                      <span className="line-clamp-2 block">{nextPost.title}</span>
+                      {nextPost.title ? (
+                        <span className="line-clamp-2 block">{nextPost.title}</span>
+                      ) : null}
                     </button>
                   ) : (
                     <div className="rounded-lg border border-dashed border-[#2f3750] bg-[#101624] px-4 py-3 text-right text-sm text-[#7f8aac]">
@@ -590,7 +654,7 @@ export default function BlogListPage({
         </section>
 
         {showToc && !sidebarsHidden ? (
-          <aside className={cn('blog-col-right blog-side-panel', activePane === 'right' && 'pane-focused')}>
+          <aside className={cn('blog-col-right blog-side-panel print:hidden', activePane === 'right' && 'pane-focused')}>
             <p className="toc-panel-title flex w-full items-center gap-1.5">
               <ListTree className="size-4 shrink-0" />
               <span>本页目录</span>

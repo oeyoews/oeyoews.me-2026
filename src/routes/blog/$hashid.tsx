@@ -64,7 +64,7 @@ export const Route = createFileRoute('/blog/$hashid')({
   },
   head: ({ loaderData }) => {
     if (!loaderData) return {}
-    const title = loaderData.activePost?.meta.title ?? loaderData.activeImage?.meta.title ?? 'Blog'
+    const title = loaderData.activePost?.meta.title || loaderData.activeImage?.meta.title || 'Blog'
     const description = loaderData.activePost?.meta.description
     return {
       meta: [

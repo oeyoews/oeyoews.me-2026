@@ -151,7 +151,7 @@
 	"[typescriptreact]": {
 		"editor.defaultFormatter": "vscode.typescript-language-features"
 	},
-	"workbench.iconTheme": "material-icon-theme",
+	"workbench.iconTheme": "vscode-icons",
 	"typescript.updateImportsOnFileMove.enabled": "always",
 	"files.associations": {
 		"*.css": "tailwindcss"

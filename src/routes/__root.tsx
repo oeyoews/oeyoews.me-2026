@@ -1,6 +1,5 @@
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
+import { useEffect, useState } from 'react'
 import CommandPalette from '../components/command-palette'
 
 import appCss from '../styles.css?url'
@@ -43,6 +42,30 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <div className="flex-1 overflow-hidden">{children}</div>
         </div>
         <CommandPalette />
+        <ClientOnlyDevtools />
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+
+function ClientOnlyDevtools() {
+  const [devtools, setDevtools] = useState<React.ReactNode>(null)
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+
+    let mounted = true
+
+    async function loadDevtools() {
+      const [{ TanStackDevtools }, { TanStackRouterDevtoolsPanel }] = await Promise.all([
+        import('@tanstack/react-devtools'),
+        import('@tanstack/react-router-devtools'),
+      ])
+
+      if (!mounted) return
+
+      setDevtools(
         <TanStackDevtools
           config={{
             position: 'bottom-right',
@@ -53,9 +76,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               render: <TanStackRouterDevtoolsPanel />,
             },
           ]}
-        />
-        <Scripts />
-      </body>
-    </html>
-  )
+        />,
+      )
+    }
+
+    void loadDevtools()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  return <>{devtools}</>
 }
