@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Streamdown } from 'streamdown'
 import { createCodePlugin } from '@streamdown/code'
+import { createCjkPlugin } from '@streamdown/cjk'
 import { ArrowLeft, ArrowRight, CalendarDays, ListTree, PanelLeftOpen, Quote, X } from 'lucide-react'
 import type { BlogImage, BlogPost, BlogPostMeta, BlogTreeItem } from '../blog/posts'
 import BlogFileTree from './blog-file-tree'
@@ -19,6 +20,7 @@ type BlogListPageProps = {
 const code = createCodePlugin({
   themes: ['github-light', 'one-dark-pro'],
 })
+const cjk = createCjkPlugin()
 
 function toHeadingId(text: string) {
   const normalized = text
@@ -539,7 +541,7 @@ export default function BlogListPage({
               <>
                 <header className="mb-6 print:mb-4">
                   {activePost.meta.title ? (
-                    <h1 className="m-0 text-[32px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] print:text-black xl:text-[36px]">
+                    <h1 className="m-0 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] print:text-black xl:text-[28px]">
                       {activePost.meta.title}
                     </h1>
                   ) : null}
@@ -560,9 +562,9 @@ export default function BlogListPage({
                 <div
                   key={activePost.meta.hashid}
                   ref={contentRef}
-                  className="blog-article-content prose prose-slate max-w-none dark:prose-invert prose-headings:text-foreground/85 prose-p:text-foreground/70 prose-li:text-foreground/70 print:max-w-full print:prose-black print:prose-headings:text-black print:prose-p:text-black print:prose-li:text-black"
+                  className="blog-article-content max-w-none prose-pre:my-0"
                 >
-                  <Streamdown key={activePost.meta.hashid} mode="static" plugins={{ code }}>
+                  <Streamdown linkSafety={{ enabled: false }} key={activePost.meta.hashid} mode="static" plugins={{ code, cjk }} controls={{ code: { download: false } }}>
                     {activePost.content}
                   </Streamdown>
                 </div>
@@ -630,7 +632,7 @@ export default function BlogListPage({
             ) : activeImage ? (
               <div className="space-y-4">
                 <header>
-                  <h1 className="m-0 text-[32px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff]">
+                  <h1 className="m-0 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff]">
                     {activeImage.meta.title}
                   </h1>
                   <p className="mt-3 text-[12px] text-[#9aa6c5]">{activeImage.meta.sourcePath}</p>

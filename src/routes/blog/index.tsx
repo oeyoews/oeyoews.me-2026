@@ -23,6 +23,7 @@ function extractToc(content: string): TocItem[] {
   const lines = content.split('\n')
   const items: TocItem[] = []
   const idCount = new Map<string, number>()
+  let inCodeFence = false
 
   const resolveUniqueId = (text: string) => {
     const base = toHeadingId(text)
@@ -32,6 +33,13 @@ function extractToc(content: string): TocItem[] {
   }
 
   for (const line of lines) {
+    const trimmed = line.trimStart()
+    if (/^```/.test(trimmed) || /^~~~/.test(trimmed)) {
+      inCodeFence = !inCodeFence
+      continue
+    }
+    if (inCodeFence) continue
+
     const h2 = line.match(/^##\s+(.+)$/)
     if (h2) {
       const text = h2[1].trim()
