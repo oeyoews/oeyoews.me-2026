@@ -726,8 +726,117 @@ export default function BlogListPage({
         </div>
 
         <section className="blog-col-main print:h-auto print:overflow-visible print:border-0 print:bg-white print:px-0 print:pt-0 print:pb-0">
+          {activePost ? (
+            <div className="sticky -top-2 z-20 -m-5 mb-4 flex flex-col items-start gap-3 px-5 border-b border-[#2f3750] py-1.5 sm:flex-row sm:justify-between xl:-mx-6 xl:px-6 print:static print:mx-0 print:top-0 print:mb-0 print:border-0 print:bg-transparent print:px-0 print:py-0">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 bg-[#1f2638]/88 backdrop-blur-md backdrop-saturate-150 supports-backdrop-filter:bg-[#1f2638]/70 print:hidden"
+              />
+              <div className="relative z-10 flex w-full flex-col items-start gap-3 sm:flex-row sm:justify-between">
+                {activePost.meta.title ? (
+                  <h1 className="m-0 flex-1 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] print:text-black xl:text-[28px]">
+                    {activePost.meta.title}
+                  </h1>
+                ) : null}
+                {currentHashid ? (
+                  <div ref={shareMenuRef} className="relative self-end hidden print:hidden sm:ml-auto sm:block sm:self-auto">
+                    <div className="inline-flex overflow-hidden rounded border border-[#2f3750] bg-[#202739] text-sm text-[#dbe5ff]">
+                      <button
+                        type="button"
+                        onClick={runShareAction}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 hover:bg-[#2a3450]"
+                      >
+                        {shareState === 'copied-link' || shareState === 'copied-article' ? (
+                          <Check className="size-4 shrink-0" />
+                        ) : shareAction === 'download-md' ? (
+                          <Download className="size-4 shrink-0" />
+                        ) : (
+                          <Copy className="size-4 shrink-0" />
+                        )}
+                        <span>
+                          {shareState === 'copied-link'
+                            ? '已复制链接'
+                            : shareState === 'copied-article'
+                              ? '已复制文章'
+                              : shareState === 'failed'
+                                ? '复制失败'
+                                : shareAction === 'copy-link'
+                                  ? '复制分享链接'
+                                  : shareAction === 'copy-article'
+                                    ? '复制文章'
+                                    : '下载 Markdown 文件'}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShareMenuOpen((prev) => !prev)}
+                        className="inline-flex items-center border-l border-[#2f3750] px-2 hover:bg-[#2a3450]"
+                        aria-haspopup="menu"
+                        aria-expanded={shareMenuOpen}
+                        aria-label="切换分享动作"
+                      >
+                        <ChevronDown className="size-4 shrink-0 opacity-80" />
+                      </button>
+                    </div>
+                    {shareMenuOpen ? (
+                      <div
+                        role="menu"
+                        className="absolute top-[calc(100%+6px)] right-0 z-20 min-w-[190px] rounded-md border border-[#2f3750] bg-[#171f30] p-1 shadow-lg"
+                      >
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setShareAction('copy-link')
+                            setShareMenuOpen(false)
+                          }}
+                          className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-[#dbe5ff] hover:bg-[#2a3450]"
+                        >
+                          <Link2 className="size-3.5 shrink-0" />
+                          <span>复制分享链接</span>
+                          {shareAction === 'copy-link' ? (
+                            <Check className="ml-auto size-3.5 shrink-0 text-[#9fb0d8]" />
+                          ) : null}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setShareAction('copy-article')
+                            setShareMenuOpen(false)
+                          }}
+                          className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-[#dbe5ff] hover:bg-[#2a3450]"
+                        >
+                          <FileText className="size-3.5 shrink-0" />
+                          <span>复制文章</span>
+                          {shareAction === 'copy-article' ? (
+                            <Check className="ml-auto size-3.5 shrink-0 text-[#9fb0d8]" />
+                          ) : null}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setShareAction('download-md')
+                            setShareMenuOpen(false)
+                          }}
+                          className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-[#dbe5ff] hover:bg-[#2a3450]"
+                        >
+                          <Download className="size-3.5 shrink-0" />
+                          <span>下载 Markdown 文件</span>
+                          {shareAction === 'download-md' ? (
+                            <Check className="ml-auto size-3.5 shrink-0 text-[#9fb0d8]" />
+                          ) : null}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           <div className="blog-main-inner">
-            <div className="mb-4 xl:hidden print:hidden">
+            <div className="mb-4 flex justify-end xl:hidden print:hidden">
               <button
                 type="button"
                 onClick={openMobileTree}
@@ -741,107 +850,6 @@ export default function BlogListPage({
               {activePost ? (
                 <>
                 <header className="mb-6 print:mb-4">
-                  <div className="sticky top-0 z-20 -mx-2 mb-4 flex flex-col items-start gap-3 border-b border-[#2f3750] bg-[#1f2638]/95 px-2 py-2 backdrop-blur sm:flex-row sm:justify-between print:static print:mx-0 print:mb-0 print:border-0 print:bg-transparent print:px-0 print:py-0 print:backdrop-blur-none">
-                    {activePost.meta.title ? (
-                      <h1 className="m-0 flex-1 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] print:text-black xl:text-[28px]">
-                        {activePost.meta.title}
-                      </h1>
-                    ) : null}
-                    {currentHashid ? (
-                      <div ref={shareMenuRef} className="relative self-end print:hidden sm:ml-auto sm:self-auto">
-                        <div className="inline-flex overflow-hidden rounded border border-[#2f3750] bg-[#202739] text-sm text-[#dbe5ff]">
-                          <button
-                            type="button"
-                            onClick={runShareAction}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 hover:bg-[#2a3450]"
-                          >
-                            {shareState === 'copied-link' || shareState === 'copied-article' ? (
-                              <Check className="size-4 shrink-0" />
-                            ) : shareAction === 'download-md' ? (
-                              <Download className="size-4 shrink-0" />
-                            ) : (
-                              <Copy className="size-4 shrink-0" />
-                            )}
-                            <span>
-                              {shareState === 'copied-link'
-                                ? '已复制链接'
-                                : shareState === 'copied-article'
-                                  ? '已复制文章'
-                                  : shareState === 'failed'
-                                    ? '复制失败'
-                                    : shareAction === 'copy-link'
-                                      ? '复制分享链接'
-                                      : shareAction === 'copy-article'
-                                        ? '复制文章'
-                                        : '下载 Markdown 文件'}
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setShareMenuOpen((prev) => !prev)}
-                            className="inline-flex items-center border-l border-[#2f3750] px-2 hover:bg-[#2a3450]"
-                            aria-haspopup="menu"
-                            aria-expanded={shareMenuOpen}
-                            aria-label="切换分享动作"
-                          >
-                            <ChevronDown className="size-4 shrink-0 opacity-80" />
-                          </button>
-                        </div>
-                        {shareMenuOpen ? (
-                          <div
-                            role="menu"
-                            className="absolute top-[calc(100%+6px)] right-0 z-20 min-w-[190px] rounded-md border border-[#2f3750] bg-[#171f30] p-1 shadow-lg"
-                          >
-                            <button
-                              type="button"
-                              role="menuitem"
-                              onClick={() => {
-                                setShareAction('copy-link')
-                                setShareMenuOpen(false)
-                              }}
-                              className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-[#dbe5ff] hover:bg-[#2a3450]"
-                            >
-                              <Link2 className="size-3.5 shrink-0" />
-                              <span>复制分享链接</span>
-                              {shareAction === 'copy-link' ? (
-                                <Check className="ml-auto size-3.5 shrink-0 text-[#9fb0d8]" />
-                              ) : null}
-                            </button>
-                            <button
-                              type="button"
-                              role="menuitem"
-                              onClick={() => {
-                                setShareAction('copy-article')
-                                setShareMenuOpen(false)
-                              }}
-                              className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-[#dbe5ff] hover:bg-[#2a3450]"
-                            >
-                              <FileText className="size-3.5 shrink-0" />
-                              <span>复制文章</span>
-                              {shareAction === 'copy-article' ? (
-                                <Check className="ml-auto size-3.5 shrink-0 text-[#9fb0d8]" />
-                              ) : null}
-                            </button>
-                            <button
-                              type="button"
-                              role="menuitem"
-                              onClick={() => {
-                                setShareAction('download-md')
-                                setShareMenuOpen(false)
-                              }}
-                              className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-[#dbe5ff] hover:bg-[#2a3450]"
-                            >
-                              <Download className="size-3.5 shrink-0" />
-                              <span>下载 Markdown 文件</span>
-                              {shareAction === 'download-md' ? (
-                                <Check className="ml-auto size-3.5 shrink-0 text-[#9fb0d8]" />
-                              ) : null}
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
                   {activePost.meta.date ? (
                     <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-[#9aa6c5] print:text-gray-600">
                       <CalendarDays className="size-3.5 shrink-0" />
