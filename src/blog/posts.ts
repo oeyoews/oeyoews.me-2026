@@ -1,3 +1,5 @@
+import { blogContentConfig } from './config'
+
 export type BlogPostMeta = {
   title?: string
   date: string
@@ -68,10 +70,11 @@ function parseFrontmatterObject(frontmatterSource: string): Record<string, unkno
 
 function toRelativeContentPath(path: string) {
   const normalized = path.replace(/\\/g, '/')
-  const marker = '/content/'
+  const marker = `/${blogContentConfig.contentDirName}/`
   const idx = normalized.lastIndexOf(marker)
   if (idx === -1) {
-    const relativeMatch = normalized.match(/(?:^|\/)content\/(.+)$/)
+    const escapedDirName = blogContentConfig.contentDirName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const relativeMatch = normalized.match(new RegExp(`(?:^|/)${escapedDirName}/(.+)$`))
     if (relativeMatch?.[1]) return relativeMatch[1]
     return normalized
   }
@@ -141,6 +144,7 @@ function parseFrontmatter(raw: string): FrontmatterParseResult {
   }
 }
 
+// Vite requires literal patterns in import.meta.glob.
 const rawPosts = import.meta.glob('../../content/**/*.md', {
   eager: true,
   query: '?raw',

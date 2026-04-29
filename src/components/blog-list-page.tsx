@@ -538,8 +538,9 @@ export default function BlogListPage({
                 <span>打开目录树</span>
               </button>
             </div>
-            {activePost ? (
-              <>
+            <div key={currentHashid ?? 'empty'} className="blog-content-fade-enter">
+              {activePost ? (
+                <>
                 <header className="mb-6 print:mb-4">
                   {activePost.meta.title ? (
                     <h1 className="m-0 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] print:text-black xl:text-[28px]">
@@ -636,9 +637,9 @@ export default function BlogListPage({
                     </div>
                   )}
                 </nav>
-              </>
-            ) : activeImage ? (
-              <div className="space-y-4">
+                </>
+              ) : activeImage ? (
+                <div className="space-y-4">
                 <header>
                   <h1 className="m-0 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff]">
                     {activeImage.meta.title}
@@ -653,14 +654,15 @@ export default function BlogListPage({
                     loading="lazy"
                   />
                 </div>
-              </div>
-            ) : (
-              <div className="flex min-h-[60vh] flex-col items-center justify-center space-y-4 text-center">
+                </div>
+              ) : (
+                <div className="flex min-h-[60vh] flex-col items-center justify-center space-y-4 text-center">
                 <SearchX className="size-9 text-[#8f9bbd]" />
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground">文章不存在</h1>
                 <p className="text-sm text-muted-foreground">请从左侧目录选择其他文章继续预览</p>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
