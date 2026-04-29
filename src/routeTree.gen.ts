@@ -9,16 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ShareIdRouteImport } from './routes/$shareId'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BlogIndexRouteImport } from './routes/blog/index'
+import { Route as SShareIdRouteImport } from './routes/s/$shareId'
 import { Route as BlogHashidRouteImport } from './routes/blog/$hashid'
 
-const ShareIdRoute = ShareIdRouteImport.update({
-  id: '/$shareId',
-  path: '/$shareId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -29,6 +24,11 @@ const BlogIndexRoute = BlogIndexRouteImport.update({
   path: '/blog/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SShareIdRoute = SShareIdRouteImport.update({
+  id: '/s/$shareId',
+  path: '/s/$shareId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BlogHashidRoute = BlogHashidRouteImport.update({
   id: '/blog/$hashid',
   path: '/blog/$hashid',
@@ -37,47 +37,40 @@ const BlogHashidRoute = BlogHashidRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/$shareId': typeof ShareIdRoute
   '/blog/$hashid': typeof BlogHashidRoute
+  '/s/$shareId': typeof SShareIdRoute
   '/blog/': typeof BlogIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/$shareId': typeof ShareIdRoute
   '/blog/$hashid': typeof BlogHashidRoute
+  '/s/$shareId': typeof SShareIdRoute
   '/blog': typeof BlogIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/$shareId': typeof ShareIdRoute
   '/blog/$hashid': typeof BlogHashidRoute
+  '/s/$shareId': typeof SShareIdRoute
   '/blog/': typeof BlogIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/$shareId' | '/blog/$hashid' | '/blog/'
+  fullPaths: '/' | '/blog/$hashid' | '/s/$shareId' | '/blog/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$shareId' | '/blog/$hashid' | '/blog'
-  id: '__root__' | '/' | '/$shareId' | '/blog/$hashid' | '/blog/'
+  to: '/' | '/blog/$hashid' | '/s/$shareId' | '/blog'
+  id: '__root__' | '/' | '/blog/$hashid' | '/s/$shareId' | '/blog/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ShareIdRoute: typeof ShareIdRoute
   BlogHashidRoute: typeof BlogHashidRoute
+  SShareIdRoute: typeof SShareIdRoute
   BlogIndexRoute: typeof BlogIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/$shareId': {
-      id: '/$shareId'
-      path: '/$shareId'
-      fullPath: '/$shareId'
-      preLoaderRoute: typeof ShareIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -92,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/s/$shareId': {
+      id: '/s/$shareId'
+      path: '/s/$shareId'
+      fullPath: '/s/$shareId'
+      preLoaderRoute: typeof SShareIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/blog/$hashid': {
       id: '/blog/$hashid'
       path: '/blog/$hashid'
@@ -104,8 +104,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ShareIdRoute: ShareIdRoute,
   BlogHashidRoute: BlogHashidRoute,
+  SShareIdRoute: SShareIdRoute,
   BlogIndexRoute: BlogIndexRoute,
 }
 export const routeTree = rootRouteImport

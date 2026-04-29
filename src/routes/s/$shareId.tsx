@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { decodeShareId } from '../blog/share-id'
-import { getImageByHashid, getPostByHashid } from '../blog/posts'
-import BlogReadonlyView from '../components/blog-readonly-view'
+import { decodeShareId } from '../../blog/share-id'
+import { getImageByHashid, getPostByHashid } from '../../blog/posts'
+import BlogReadonlyView from '../../components/blog-readonly-view'
 
-export const Route = createFileRoute('/$shareId')({
+export const Route = createFileRoute('/s/$shareId')({
   loader: ({ params }) => {
     const hashid = decodeShareId(params.shareId)
     if (!hashid) {

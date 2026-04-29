@@ -242,7 +242,7 @@ export default function BlogListPage({
       return
     }
 
-    const url = `${window.location.origin}/${shareId}`
+    const url = `${window.location.origin}/s/${shareId}`
     const ok = await copyTextToClipboard(url)
     setShareState(ok ? 'copied' : 'failed')
     shareResetTimerRef.current = window.setTimeout(() => setShareState('idle'), ok ? 1200 : 1600)
