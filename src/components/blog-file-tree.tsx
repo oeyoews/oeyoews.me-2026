@@ -53,7 +53,7 @@ function getFileIconSrc(extension?: string) {
 }
 
 function buildTree(items: Array<{ hashid: string; treePath: string; sourcePath: string }>) {
-  const root = createNode('blog')
+  const root = createNode('')
 
   for (const item of items) {
     const parts = item.treePath.split('/').filter(Boolean)
@@ -74,6 +74,39 @@ function buildTree(items: Array<{ hashid: string; treePath: string; sourcePath: 
       }
       cursor = next
     }
+  }
+
+  const collapseDirectoryChains = (node: TreeNode): TreeNode => {
+    if (node.children.size > 0) {
+      const collapsedChildren = new Map<string, TreeNode>()
+      for (const child of node.children.values()) {
+        const collapsed = collapseDirectoryChains(child)
+        const key = collapsed.hashid ? `${collapsed.name}__file` : `${collapsed.name}__dir`
+        collapsedChildren.set(key, collapsed)
+      }
+      node.children = collapsedChildren
+    }
+
+    if (node.hashid) return node
+
+    while (node.children.size === 1) {
+      const [onlyChild] = Array.from(node.children.values())
+      if (!onlyChild || onlyChild.hashid) break
+      node.name = node.name ? `${node.name}/${onlyChild.name}` : onlyChild.name
+      node.children = onlyChild.children
+    }
+
+    return node
+  }
+
+  if (root.children.size > 0) {
+    const collapsedRootChildren = new Map<string, TreeNode>()
+    for (const child of root.children.values()) {
+      const collapsed = collapseDirectoryChains(child)
+      const key = collapsed.hashid ? `${collapsed.name}__file` : `${collapsed.name}__dir`
+      collapsedRootChildren.set(key, collapsed)
+    }
+    root.children = collapsedRootChildren
   }
 
   return root

@@ -126,7 +126,7 @@
 	"window.commandCenter": true,
 	"markdown.preview.fontSize": 24,
 	"security.workspace.trust.untrustedFiles": "open",
-	"explorer.compactFolders": false,
+	"explorer.compactFolders": true,
 	"workbench.editorAssociations": {
 		"*.png": "imagePreview.previewEditor",
 		"*.md": "default",
