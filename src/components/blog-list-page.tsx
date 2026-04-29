@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Streamdown } from 'streamdown'
 import { createCodePlugin } from '@streamdown/code'
 import { createCjkPlugin } from '@streamdown/cjk'
-import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, Copy, Download, FileText, Link2, ListTree, Lock, PanelLeftOpen, Quote, SearchX, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, Copy, Download, ExternalLink, FileText, Link2, ListTree, Lock, PanelLeftOpen, Quote, SearchX, X } from 'lucide-react'
 import type { BlogImage, BlogPost, BlogPostMeta, BlogTreeItem } from '../blog/posts'
 import { encodeShareToken } from '../blog/share-id'
 import BlogFileTree from './blog-file-tree'
@@ -213,7 +213,7 @@ export default function BlogListPage({
   const [openDirectoryPaths, setOpenDirectoryPaths] = useState<string[]>([])
   const [toggleDirectoryRequest, setToggleDirectoryRequest] = useState<{ path: string; nonce: number }>()
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
-  const [shareAction, setShareAction] = useState<'copy-link' | 'copy-article' | 'download-md'>('copy-link')
+  const [shareAction, setShareAction] = useState<'copy-link' | 'copy-article' | 'download-md' | 'open-new-tab'>('copy-link')
   const [shareState, setShareState] = useState<'idle' | 'copied-link' | 'copied-article' | 'failed'>('idle')
   const [sharePassword, setSharePassword] = useState('')
   const shareResetTimerRef = useRef<number | null>(null)
@@ -356,7 +356,22 @@ export default function BlogListPage({
     window.setTimeout(() => window.URL.revokeObjectURL(url), 0)
   }
 
+  const openCurrentInNewTab = () => {
+    if (!currentHashid || typeof window === 'undefined') return
+    const shareToken = encodeShareToken(currentHashid, sharePassword)
+    if (!shareToken) {
+      resetShareStateTimer('failed')
+      return
+    }
+    const targetUrl = `${window.location.origin}/s/${shareToken}`
+    window.open(targetUrl, '_blank', 'noopener,noreferrer')
+  }
+
   const runShareAction = async () => {
+    if (shareAction === 'open-new-tab') {
+      openCurrentInNewTab()
+      return
+    }
     if (shareAction === 'copy-link') {
       await shareCurrent()
       return
@@ -813,6 +828,8 @@ export default function BlogListPage({
                       >
                         {shareState === 'copied-link' || shareState === 'copied-article' ? (
                           <Check className="size-4 shrink-0" />
+                        ) : shareAction === 'open-new-tab' ? (
+                          <ExternalLink className="size-4 shrink-0" />
                         ) : shareAction === 'download-md' ? (
                           <Download className="size-4 shrink-0" />
                         ) : (
@@ -829,7 +846,9 @@ export default function BlogListPage({
                                   ? '复制分享链接'
                                   : shareAction === 'copy-article'
                                     ? '复制文章'
-                                    : '下载 Markdown 文件'}
+                                    : shareAction === 'open-new-tab'
+                                      ? '新页面打开'
+                                      : '下载 Markdown 文件'}
                         </span>
                       </button>
                       <button
@@ -848,6 +867,21 @@ export default function BlogListPage({
                         role="menu"
                         className="absolute top-[calc(100%+6px)] right-0 z-20 min-w-[190px] rounded-md border border-border bg-popover p-1 shadow-lg"
                       >
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setShareAction('open-new-tab')
+                            setShareMenuOpen(false)
+                          }}
+                          className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-foreground hover:bg-muted"
+                        >
+                          <ExternalLink className="size-3.5 shrink-0" />
+                          <span>新页面打开</span>
+                          {shareAction === 'open-new-tab' ? (
+                            <Check className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+                          ) : null}
+                        </button>
                         <button
                           type="button"
                           role="menuitem"
