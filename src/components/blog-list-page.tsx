@@ -823,13 +823,13 @@ export default function BlogListPage({
           {activePost ? (
             <div
               className={cn(
-                'sticky top-0 z-20 -m-5 mb-4 flex flex-col items-start gap-3 border-b border-border px-5 py-[5.4px] sm:flex-row sm:justify-between xl:-mx-6 xl:px-6',
+                'relative z-20 mb-4 flex flex-col items-start gap-3 border-b border-border px-5 py-[5.4px] sm:-m-5 sm:sticky sm:top-0 sm:flex-row sm:justify-between xl:-mx-6 xl:px-6',
                 !activePost.meta.title && 'hidden sm:flex',
               )}
             >
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 bg-[color-mix(in_srgb,var(--color-secondary)_88%,transparent)] backdrop-blur-md backdrop-saturate-150 supports-backdrop-filter:bg-[color-mix(in_srgb,var(--color-secondary)_70%,transparent)]"
+                className="pointer-events-none absolute inset-0 sm:bg-[color-mix(in_srgb,var(--color-secondary)_88%,transparent)] sm:backdrop-blur-md sm:backdrop-saturate-150 sm:supports-backdrop-filter:bg-[color-mix(in_srgb,var(--color-secondary)_70%,transparent)]"
               />
               <div className="relative z-10 flex w-full flex-col items-start gap-3 sm:flex-row sm:justify-between">
                 {activePost.meta.title ? (
