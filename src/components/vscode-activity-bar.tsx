@@ -1,7 +1,8 @@
-import { Files, PanelLeftClose, PanelLeftOpen, Search, Settings } from 'lucide-react'
+import { Files, LogOut, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const OPEN_COMMAND_PALETTE_EVENT = 'open-command-palette'
+const LOGOUT_EVENT = 'app-logout'
 
 type VscodeActivityBarProps = {
   active?: 'files' | 'search' | 'settings'
@@ -47,11 +48,12 @@ export default function VscodeActivityBar({
 
       <button
         type="button"
-        className={cn('vscode-activity-button', active === 'settings' && 'vscode-activity-button-active')}
-        aria-label="Settings"
-        title="Settings"
+        className="vscode-activity-button"
+        aria-label="退出登录"
+        title="退出登录"
+        onClick={() => window.dispatchEvent(new Event(LOGOUT_EVENT))}
       >
-        <Settings className="size-4" />
+        <LogOut className="size-4" />
       </button>
     </div>
   )

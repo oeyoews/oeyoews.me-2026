@@ -8,6 +8,7 @@ import { clearAuthed, isAuthed, setAuthed, verifyPassword } from '../lib/auth'
 import appCss from '../styles.css?url'
 
 const THEME_INIT_SCRIPT = `(function(){try{var root=document.documentElement;var path=window.location&&window.location.pathname?window.location.pathname:'';var isShare=/^\\/s\\//.test(path);root.classList.remove('light','dark');if(!isShare){root.classList.add('dark');root.setAttribute('data-theme','dark');root.style.colorScheme='dark';return;}var stored=window.localStorage.getItem('share-theme');var mode=stored==='light'||stored==='dark'?stored:'dark';root.classList.add(mode);root.setAttribute('data-theme',mode);root.style.colorScheme=mode;}catch(e){}})();`
+const LOGOUT_EVENT = 'app-logout'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -83,6 +84,15 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     setAuthedState(isAuthed())
   }, [])
 
+  useEffect(() => {
+    const onLogout = () => {
+      clearAuthed()
+      setAuthedState(false)
+    }
+    window.addEventListener(LOGOUT_EVENT, onLogout)
+    return () => window.removeEventListener(LOGOUT_EVENT, onLogout)
+  }, [])
+
   const isPublic = useMemo(() => isPublicPath(pathname), [pathname])
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -95,11 +105,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     setAuthedState(true)
     setPassword('')
     setError('')
-  }
-
-  function handleLogout() {
-    clearAuthed()
-    setAuthedState(false)
   }
 
   if (!mounted) {
@@ -136,15 +141,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {!isPublic ? (
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="fixed right-4 top-4 z-50 rounded border border-[#3c4353] bg-[#20252e] px-3 py-1 text-xs text-[#f1f4fb] hover:bg-[#2a3040]"
-        >
-          退出登录
-        </button>
-      ) : null}
       {children}
     </>
   )

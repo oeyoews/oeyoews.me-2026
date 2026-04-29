@@ -3,9 +3,9 @@ import { useNavigate } from '@tanstack/react-router'
 import { Streamdown } from 'streamdown'
 import { createCodePlugin } from '@streamdown/code'
 import { createCjkPlugin } from '@streamdown/cjk'
-import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, Copy, Download, FileText, Link2, ListTree, PanelLeftOpen, Quote, SearchX, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, Copy, Download, FileText, Link2, ListTree, Lock, PanelLeftOpen, Quote, SearchX, X } from 'lucide-react'
 import type { BlogImage, BlogPost, BlogPostMeta, BlogTreeItem } from '../blog/posts'
-import { encodeShareId } from '../blog/share-id'
+import { encodeShareToken } from '../blog/share-id'
 import BlogFileTree from './blog-file-tree'
 import VscodeActivityBar from './vscode-activity-bar'
 import { cn } from '@/lib/utils'
@@ -215,6 +215,7 @@ export default function BlogListPage({
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
   const [shareAction, setShareAction] = useState<'copy-link' | 'copy-article' | 'download-md'>('copy-link')
   const [shareState, setShareState] = useState<'idle' | 'copied-link' | 'copied-article' | 'failed'>('idle')
+  const [sharePassword, setSharePassword] = useState('')
   const shareResetTimerRef = useRef<number | null>(null)
   const shareMenuRef = useRef<HTMLDivElement>(null)
   const leftPaneEntries = useMemo(() => buildKeyboardNavEntries(treeItems), [treeItems])
@@ -297,15 +298,22 @@ export default function BlogListPage({
   const shareCurrent = async () => {
     if (!currentHashid) return
 
-    const shareId = encodeShareId(currentHashid)
-    if (!shareId) {
+    const shareToken = encodeShareToken(currentHashid, sharePassword)
+    if (!shareToken) {
       resetShareStateTimer('failed')
       return
     }
 
-    const url = `${window.location.origin}/s/${shareId}`
-    const ok = await copyTextToClipboard(url)
+    const shareUrl = `${window.location.origin}/s/${shareToken}`
+    const ok = await copyTextToClipboard(shareUrl)
     resetShareStateTimer(ok ? 'copied-link' : 'failed')
+  }
+
+  const configureSharePassword = () => {
+    const nextValue = window.prompt('设置分享密码（留空表示不加密）', sharePassword)
+    if (nextValue === null) return
+    setSharePassword(nextValue.trim())
+    setShareMenuOpen(false)
   }
 
   const copyCurrentArticle = async () => {
@@ -879,6 +887,18 @@ export default function BlogListPage({
                           <Download className="size-3.5 shrink-0" />
                           <span>下载 Markdown 文件</span>
                           {shareAction === 'download-md' ? (
+                            <Check className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+                          ) : null}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={configureSharePassword}
+                          className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-foreground hover:bg-muted"
+                        >
+                          <Lock className="size-3.5 shrink-0" />
+                          <span>{sharePassword ? '修改分享密码' : '设置分享密码'}</span>
+                          {sharePassword ? (
                             <Check className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
                           ) : null}
                         </button>

@@ -53,3 +53,51 @@ export function decodeShareId(shareId: string) {
   return n.toString(36)
 }
 
+function fnv1aHash(input: string) {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return hash >>> 0
+}
+
+function normalizeSharePassword(password: string) {
+  return password.trim()
+}
+
+export function encodeShareToken(hashid: string, password?: string) {
+  const n = parseBase36Uint(hashid)
+  if (n === undefined) return ''
+
+  const normalizedPassword = normalizeSharePassword(password ?? '')
+  if (!normalizedPassword) {
+    return base62Encode(n)
+  }
+
+  const digest = fnv1aHash(normalizedPassword)
+  const masked = (n ^ digest) >>> 0
+  return `p${base62Encode(masked)}.${base62Encode(digest)}`
+}
+
+export function decodeShareToken(token: string) {
+  const trimmed = token.trim()
+  const protectedMatch = /^p([0-9a-zA-Z]+)\.([0-9a-zA-Z]+)$/.exec(trimmed)
+  if (protectedMatch) {
+    const masked = base62Decode(protectedMatch[1])
+    const digest = base62Decode(protectedMatch[2])
+    if (masked === undefined || digest === undefined) return { hashid: undefined, passwordDigest: undefined }
+    if (masked < 0 || masked > 0xffffffff || digest < 0 || digest > 0xffffffff) {
+      return { hashid: undefined, passwordDigest: undefined }
+    }
+    const n = (masked ^ digest) >>> 0
+    return { hashid: n.toString(36), passwordDigest: digest }
+  }
+
+  return { hashid: decodeShareId(trimmed), passwordDigest: undefined }
+}
+
+export function verifySharePassword(input: string, digest: number) {
+  return fnv1aHash(normalizeSharePassword(input)) === digest
+}
+
