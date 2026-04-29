@@ -14,9 +14,10 @@ const cjk = createCjkPlugin()
 type BlogReadonlyViewProps = {
   post?: BlogPost
   image?: BlogImage
+  stream?: boolean
 }
 
-export default function BlogReadonlyView({ post, image }: BlogReadonlyViewProps) {
+export default function BlogReadonlyView({ post, image, stream = true }: BlogReadonlyViewProps) {
   const postContent = post?.content ?? ''
   const hasContent = Boolean(postContent.trim())
   const [streamedContent, setStreamedContent] = useState('')
@@ -26,6 +27,10 @@ export default function BlogReadonlyView({ post, image }: BlogReadonlyViewProps)
   const shouldAutoScrollRef = useRef(true)
 
   useEffect(() => {
+    if (!stream) {
+      setIsCaretBright(true)
+      return
+    }
     if (!isStreaming) {
       setIsCaretBright(true)
       return
@@ -38,11 +43,16 @@ export default function BlogReadonlyView({ post, image }: BlogReadonlyViewProps)
     return () => {
       window.clearInterval(interval)
     }
-  }, [isStreaming])
+  }, [isStreaming, stream])
 
   useEffect(() => {
     if (!hasContent) {
       setStreamedContent('')
+      setIsStreaming(false)
+      return
+    }
+    if (!stream) {
+      setStreamedContent(postContent)
       setIsStreaming(false)
       return
     }
@@ -96,7 +106,7 @@ export default function BlogReadonlyView({ post, image }: BlogReadonlyViewProps)
         window.clearTimeout(timer)
       }
     }
-  }, [hasContent, post?.meta.hashid, postContent])
+  }, [hasContent, post?.meta.hashid, postContent, stream])
 
   useEffect(() => {
     const isNearBottom = () => {
@@ -118,13 +128,14 @@ export default function BlogReadonlyView({ post, image }: BlogReadonlyViewProps)
   }, [post?.meta.hashid])
 
   useEffect(() => {
+    if (!stream) return
     if (!isStreaming) return
     if (!shouldAutoScrollRef.current) return
     streamTailRef.current?.scrollIntoView({
       behavior: 'smooth',
       block: 'end',
     })
-  }, [isStreaming, streamedContent])
+  }, [isStreaming, streamedContent, stream])
 
   if (!post && !image) {
     return (
@@ -193,12 +204,12 @@ export default function BlogReadonlyView({ post, image }: BlogReadonlyViewProps)
           <div className="blog-article-content max-w-none prose-pre:my-0">
             <Streamdown
               linkSafety={{ enabled: false }}
-              mode="streaming"
+              mode={stream ? 'streaming' : 'static'}
               isAnimating={isStreaming}
               plugins={{ code, cjk }}
               controls={{ code: { download: false } }}
             >
-              {isStreaming ? `${streamedContent}&nbsp;${isCaretBright ? '●' : '•'}` : streamedContent}
+              {stream && isStreaming ? `${streamedContent}&nbsp;${isCaretBright ? '●' : '•'}` : streamedContent}
             </Streamdown>
             <span ref={streamTailRef} aria-hidden="true" className="block h-px w-full" />
           </div>

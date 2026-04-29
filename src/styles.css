@@ -506,7 +506,7 @@
   }
 
   .toc-item {
-    @apply rounded-sm px-2 py-1 text-sm;
+    @apply relative rounded-sm px-2 py-1 pl-6 text-sm;
     color: #aeb9d4;
     border: 1px solid transparent;
     transition:
@@ -514,6 +514,25 @@
       color 160ms ease,
       border-color 160ms ease,
       box-shadow 160ms ease;
+  }
+
+  .toc-item::before {
+    content: '';
+    position: absolute;
+    left: 0.6rem;
+    top: -0.2rem;
+    bottom: -0.2rem;
+    width: 1px;
+    background: #2f3750;
+    pointer-events: none;
+  }
+
+  .toc-item:first-child::before {
+    top: 50%;
+  }
+
+  .toc-item:last-child::before {
+    bottom: 50%;
   }
 
   .toc-item:hover {
@@ -531,8 +550,21 @@
   }
 
   .toc-item-child {
-    @apply ml-3 pl-2 text-sm;
+    @apply ml-3 text-sm;
+  }
+
+  .toc-item-child::after {
+    content: '';
+    position: absolute;
+    left: 0.6rem;
+    top: 50%;
+    width: 0.85rem;
+    height: 0.65rem;
     border-left: 1px solid #2f3750;
+    border-bottom: 1px solid #2f3750;
+    border-bottom-left-radius: 0;
+    transform: translateY(-100%);
+    pointer-events: none;
   }
 
   .toc-link {

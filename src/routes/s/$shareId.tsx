@@ -36,6 +36,9 @@ function ShareReadonlyPage() {
   const [error, setError] = useState('')
 
   const shouldProtect = Number.isInteger(passwordDigest)
+  const streamQuery =
+    typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('stream')
+  const streamEnabled = streamQuery ? !['0', 'false', 'off'].includes(streamQuery.toLowerCase()) : true
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -76,6 +79,6 @@ function ShareReadonlyPage() {
     )
   }
 
-  return <BlogReadonlyView post={post} image={image} />
+  return <BlogReadonlyView post={post} image={image} stream={streamEnabled} />
 }
 

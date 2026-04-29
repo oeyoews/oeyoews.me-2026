@@ -216,6 +216,7 @@ export default function BlogListPage({
   const [shareAction, setShareAction] = useState<'copy-link' | 'copy-article' | 'download-md' | 'open-new-tab'>('copy-link')
   const [shareState, setShareState] = useState<'idle' | 'copied-link' | 'copied-article' | 'failed'>('idle')
   const [sharePassword, setSharePassword] = useState('')
+  const [shareStreamEnabled, setShareStreamEnabled] = useState(true)
   const shareResetTimerRef = useRef<number | null>(null)
   const shareMenuRef = useRef<HTMLDivElement>(null)
   const leftPaneEntries = useMemo(() => buildKeyboardNavEntries(treeItems), [treeItems])
@@ -295,6 +296,12 @@ export default function BlogListPage({
     shareResetTimerRef.current = window.setTimeout(() => setShareState('idle'), nextState === 'failed' ? 1600 : 1200)
   }
 
+  const buildShareUrl = (shareToken: string) => {
+    const url = new URL(`/s/${shareToken}`, window.location.origin)
+    url.searchParams.set('stream', shareStreamEnabled ? '1' : '0')
+    return url.toString()
+  }
+
   const shareCurrent = async () => {
     if (!currentHashid) return
 
@@ -304,7 +311,7 @@ export default function BlogListPage({
       return
     }
 
-    const shareUrl = `${window.location.origin}/s/${shareToken}`
+    const shareUrl = buildShareUrl(shareToken)
     const ok = await copyTextToClipboard(shareUrl)
     resetShareStateTimer(ok ? 'copied-link' : 'failed')
   }
@@ -363,7 +370,7 @@ export default function BlogListPage({
       resetShareStateTimer('failed')
       return
     }
-    const targetUrl = `${window.location.origin}/s/${shareToken}`
+    const targetUrl = buildShareUrl(shareToken)
     window.open(targetUrl, '_blank', 'noopener,noreferrer')
   }
 
@@ -924,6 +931,18 @@ export default function BlogListPage({
                           <Download className="size-3.5 shrink-0" />
                           <span>下载 Markdown 文件</span>
                           {shareAction === 'download-md' ? (
+                            <Check className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+                          ) : null}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => setShareStreamEnabled((prev) => !prev)}
+                          className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-foreground hover:bg-muted"
+                        >
+                          <ListTree className="size-3.5 shrink-0" />
+                          <span>流式展示</span>
+                          {shareStreamEnabled ? (
                             <Check className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
                           ) : null}
                         </button>
