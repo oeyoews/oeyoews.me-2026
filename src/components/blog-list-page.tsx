@@ -649,8 +649,8 @@ export default function BlogListPage({
               drawerTouchStartYRef.current = null
             }}
           >
-            <div className="border-b border-[#2f3750] px-3 py-2">
-              <p className="text-sm font-medium text-[#dbe5ff]">目录</p>
+            <div className="border-b border-border px-3 py-2">
+              <p className="text-sm font-medium text-foreground">目录</p>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto pb-16">
               <BlogFileTree
@@ -666,7 +666,7 @@ export default function BlogListPage({
             <button
               type="button"
               onClick={closeMobileTree}
-              className="absolute right-3 bottom-3 inline-flex items-center gap-1 rounded border border-[#33415f] bg-[#222e4a]/95 px-2.5 py-1.5 text-xs text-[#c8d3f0] shadow-sm backdrop-blur hover:bg-[#2a3450] hover:text-[#e4eafd]"
+              className="absolute right-3 bottom-3 inline-flex items-center gap-1 rounded border border-border bg-card/95 px-2.5 py-1.5 text-xs text-foreground/80 shadow-sm backdrop-blur hover:bg-muted hover:text-foreground"
             >
               <X className="size-3.5 shrink-0" />
               <span>关闭</span>
@@ -727,24 +727,24 @@ export default function BlogListPage({
 
         <section className="blog-col-main">
           {activePost ? (
-            <div className="sticky -top-2 z-20 -m-5 mb-4 flex flex-col items-start gap-3 px-5 border-b border-[#2f3750] py-1.5 sm:flex-row sm:justify-between xl:-mx-6 xl:px-6">
+            <div className="sticky -top-2 z-20 -m-5 mb-4 flex flex-col items-start gap-3 px-5 border-b border-border py-1.5 sm:flex-row sm:justify-between xl:-mx-6 xl:px-6">
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 bg-[#1f2638]/88 backdrop-blur-md backdrop-saturate-150 supports-backdrop-filter:bg-[#1f2638]/70"
+                className="pointer-events-none absolute inset-0 bg-[color-mix(in_srgb,var(--color-secondary)_88%,transparent)] backdrop-blur-md backdrop-saturate-150 supports-backdrop-filter:bg-[color-mix(in_srgb,var(--color-secondary)_70%,transparent)]"
               />
               <div className="relative z-10 flex w-full flex-col items-start gap-3 sm:flex-row sm:justify-between">
                 {activePost.meta.title ? (
-                  <h1 className="m-0 flex-1 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] xl:text-[28px]">
+                  <h1 className="m-0 flex-1 text-[24px] leading-[1.2] font-semibold tracking-tight text-foreground xl:text-[28px]">
                     {activePost.meta.title}
                   </h1>
                 ) : null}
                 {currentHashid ? (
                   <div ref={shareMenuRef} className="relative self-end hidden sm:ml-auto sm:block sm:self-auto">
-                    <div className="inline-flex overflow-hidden rounded border border-[#2f3750] bg-[#202739] text-sm text-[#dbe5ff]">
+                    <div className="inline-flex overflow-hidden rounded border border-border bg-card text-sm text-foreground">
                       <button
                         type="button"
                         onClick={runShareAction}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 hover:bg-[#2a3450]"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 hover:bg-muted"
                       >
                         {shareState === 'copied-link' || shareState === 'copied-article' ? (
                           <Check className="size-4 shrink-0" />
@@ -770,7 +770,7 @@ export default function BlogListPage({
                       <button
                         type="button"
                         onClick={() => setShareMenuOpen((prev) => !prev)}
-                        className="inline-flex items-center border-l border-[#2f3750] px-2 hover:bg-[#2a3450]"
+                        className="inline-flex items-center border-l border-border px-2 hover:bg-muted"
                         aria-haspopup="menu"
                         aria-expanded={shareMenuOpen}
                         aria-label="切换分享动作"
@@ -781,7 +781,7 @@ export default function BlogListPage({
                     {shareMenuOpen ? (
                       <div
                         role="menu"
-                        className="absolute top-[calc(100%+6px)] right-0 z-20 min-w-[190px] rounded-md border border-[#2f3750] bg-[#171f30] p-1 shadow-lg"
+                        className="absolute top-[calc(100%+6px)] right-0 z-20 min-w-[190px] rounded-md border border-border bg-popover p-1 shadow-lg"
                       >
                         <button
                           type="button"
@@ -790,12 +790,12 @@ export default function BlogListPage({
                             setShareAction('copy-link')
                             setShareMenuOpen(false)
                           }}
-                          className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-[#dbe5ff] hover:bg-[#2a3450]"
+                          className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-foreground hover:bg-muted"
                         >
                           <Link2 className="size-3.5 shrink-0" />
                           <span>复制分享链接</span>
                           {shareAction === 'copy-link' ? (
-                            <Check className="ml-auto size-3.5 shrink-0 text-[#9fb0d8]" />
+                            <Check className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
                           ) : null}
                         </button>
                         <button
@@ -805,12 +805,12 @@ export default function BlogListPage({
                             setShareAction('copy-article')
                             setShareMenuOpen(false)
                           }}
-                          className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-[#dbe5ff] hover:bg-[#2a3450]"
+                          className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-foreground hover:bg-muted"
                         >
                           <FileText className="size-3.5 shrink-0" />
                           <span>复制文章</span>
                           {shareAction === 'copy-article' ? (
-                            <Check className="ml-auto size-3.5 shrink-0 text-[#9fb0d8]" />
+                            <Check className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
                           ) : null}
                         </button>
                         <button
@@ -820,12 +820,12 @@ export default function BlogListPage({
                             setShareAction('download-md')
                             setShareMenuOpen(false)
                           }}
-                          className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-[#dbe5ff] hover:bg-[#2a3450]"
+                          className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-foreground hover:bg-muted"
                         >
                           <Download className="size-3.5 shrink-0" />
                           <span>下载 Markdown 文件</span>
                           {shareAction === 'download-md' ? (
-                            <Check className="ml-auto size-3.5 shrink-0 text-[#9fb0d8]" />
+                            <Check className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
                           ) : null}
                         </button>
                       </div>
@@ -840,7 +840,7 @@ export default function BlogListPage({
               <button
                 type="button"
                 onClick={openMobileTree}
-                className="inline-flex items-center gap-1.5 rounded border border-[#2f3750] bg-[#202739] px-3 py-1.5 text-sm text-[#dbe5ff] hover:bg-[#2a3450]"
+                className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 text-sm text-foreground hover:bg-muted"
               >
                 <PanelLeftOpen className="size-4 shrink-0" />
                 <span>打开目录树</span>
@@ -851,14 +851,14 @@ export default function BlogListPage({
                 <>
                 <header className="mb-6">
                   {activePost.meta.date ? (
-                    <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-[#9aa6c5]">
+                    <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
                       <CalendarDays className="size-3.5 shrink-0" />
                       <time>{activePost.meta.date}</time>
                     </p>
                   ) : null}
                   {activePost.meta.description ? (
-                    <p className="mt-4 inline-flex w-full items-start gap-2 rounded-md border border-[#2a3450] bg-[#131b2c] px-3 py-2 text-[13px] leading-6 text-[#b7c2df]">
-                      <Quote className="mt-1 size-3 shrink-0 text-[#7f8aac]" />
+                    <p className="mt-4 inline-flex w-full items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-[13px] leading-6 text-foreground/80">
+                      <Quote className="mt-1 size-3 shrink-0 text-muted-foreground" />
                       <span>{activePost.meta.description}</span>
                     </p>
                   ) : null}
@@ -875,13 +875,13 @@ export default function BlogListPage({
                     </Streamdown>
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-dashed border-[#2f3750] bg-[#101624] px-4 py-8 text-center text-sm text-[#9aa6c5]">
-                    <FileText className="mx-auto mb-2 size-5 text-[#8f9bbd]" />
+                  <div className="rounded-lg border border-dashed border-border bg-muted/60 px-4 py-8 text-center text-sm text-muted-foreground">
+                    <FileText className="mx-auto mb-2 size-5 text-muted-foreground" />
                     当前文章暂无正文内容，可以从左侧目录切换到其他文章。
                   </div>
                 )}
 
-                <nav className="mt-10 grid gap-3 border-t border-[#2f3750] pt-6 sm:grid-cols-2">
+                <nav className="mt-10 grid gap-3 border-t border-border pt-6 sm:grid-cols-2">
                   {prevPost ? (
                     <button
                       type="button"
@@ -891,9 +891,9 @@ export default function BlogListPage({
                           params: { hashid: prevPost.hashid },
                         })
                       }
-                      className="cursor-pointer rounded-lg border border-[#2f3750] bg-[#12182a] px-4 py-3 text-left text-sm text-[#b1bcda] transition-colors hover:border-[#3c4668] hover:text-[#e7ecff]"
+                      className="cursor-pointer rounded-lg border border-border bg-card px-4 py-3 text-left text-sm text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
                     >
-                      <span className="mb-1 inline-flex items-center gap-1 text-xs text-[#8f9bbd]">
+                      <span className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <ArrowLeft className="size-3.5 shrink-0" />
                         <span>上一篇</span>
                       </span>
@@ -902,12 +902,12 @@ export default function BlogListPage({
                       ) : null}
                     </button>
                   ) : (
-                    <div className="rounded-lg border border-dashed border-[#2f3750] bg-[#101624] px-4 py-3 text-sm text-[#7f8aac]">
-                      <span className="mb-1 inline-flex items-center gap-1 text-xs text-[#8f9bbd]">
+                    <div className="rounded-lg border border-dashed border-border bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
+                      <span className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <ArrowLeft className="size-3.5 shrink-0 opacity-80" />
                         <span>上一篇</span>
                       </span>
-                      <span className="block text-[#7f8aac]">已经是最新一篇</span>
+                      <span className="block text-muted-foreground">已经是最新一篇</span>
                     </div>
                   )}
 
@@ -920,9 +920,9 @@ export default function BlogListPage({
                           params: { hashid: nextPost.hashid },
                         })
                       }
-                      className="cursor-pointer rounded-lg border border-[#2f3750] bg-[#12182a] px-4 py-3 text-right text-sm text-[#b1bcda] transition-colors hover:border-[#3c4668] hover:text-[#e7ecff]"
+                      className="cursor-pointer rounded-lg border border-border bg-card px-4 py-3 text-right text-sm text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
                     >
-                      <span className="mb-1 inline-flex items-center gap-1 text-xs text-[#8f9bbd]">
+                      <span className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <span>下一篇</span>
                         <ArrowRight className="size-3.5 shrink-0" />
                       </span>
@@ -931,12 +931,12 @@ export default function BlogListPage({
                       ) : null}
                     </button>
                   ) : (
-                    <div className="rounded-lg border border-dashed border-[#2f3750] bg-[#101624] px-4 py-3 text-right text-sm text-[#7f8aac]">
-                      <span className="mb-1 inline-flex items-center gap-1 text-xs text-[#8f9bbd]">
+                    <div className="rounded-lg border border-dashed border-border bg-muted/60 px-4 py-3 text-right text-sm text-muted-foreground">
+                      <span className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <span>下一篇</span>
                         <ArrowRight className="size-3.5 shrink-0 opacity-80" />
                       </span>
-                      <span className="block text-[#7f8aac]">已经是最后一篇</span>
+                      <span className="block text-muted-foreground">已经是最后一篇</span>
                     </div>
                   )}
                 </nav>
@@ -944,12 +944,12 @@ export default function BlogListPage({
               ) : activeImage ? (
                 <div className="space-y-4">
                 <header>
-                  <h1 className="m-0 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff]">
+                  <h1 className="m-0 text-[24px] leading-[1.2] font-semibold tracking-tight text-foreground">
                     {activeImage.meta.title}
                   </h1>
-                  <p className="mt-3 text-[12px] text-[#9aa6c5]">{activeImage.meta.sourcePath}</p>
+                  <p className="mt-3 text-[12px] text-muted-foreground">{activeImage.meta.sourcePath}</p>
                 </header>
-                <div className="overflow-hidden rounded-lg border border-[#2f3750] bg-[#161b27] p-2">
+                <div className="overflow-hidden rounded-lg border border-border bg-background p-2">
                   <img
                     src={activeImage.imageUrl}
                     alt={activeImage.meta.title}
@@ -960,7 +960,7 @@ export default function BlogListPage({
                 </div>
               ) : (
                 <div className="flex min-h-[60vh] flex-col items-center justify-center space-y-4 text-center">
-                <SearchX className="size-9 text-[#8f9bbd]" />
+                <SearchX className="size-9 text-muted-foreground" />
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground">文章不存在</h1>
                 <p className="text-sm text-muted-foreground">请从左侧目录选择其他文章继续预览</p>
                 </div>
