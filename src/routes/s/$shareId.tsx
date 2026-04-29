@@ -50,23 +50,23 @@ function ShareReadonlyPage() {
 
   if (shouldProtect && !authed) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6">
-        <div className="rounded-lg border border-[#3c4353] bg-[#20252e] p-6 shadow">
-          <h1 className="mb-2 text-xl font-semibold text-[#f1f4fb]">该分享已加密</h1>
-          <p className="mb-5 text-sm text-[#bfc8dc]">请输入分享密码后查看内容。</p>
+      <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center bg-background px-6">
+        <div className="rounded-lg border border-border bg-card p-6 text-card-foreground shadow">
+          <h1 className="mb-2 text-xl font-semibold text-foreground">该分享已加密</h1>
+          <p className="mb-5 text-sm text-muted-foreground">请输入分享密码后查看内容。</p>
           <form className="space-y-3" onSubmit={handleSubmit}>
             <input
               autoFocus
               type="password"
               value={inputPassword}
               onChange={(event) => setInputPassword(event.target.value)}
-              className="w-full rounded border border-[#3c4353] bg-[#14171f] px-3 py-2 text-[#f1f4fb] outline-none focus:border-[#5b84ff]"
+              className="w-full rounded border border-input bg-background px-3 py-2 text-foreground outline-none focus:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
               placeholder="输入分享密码"
             />
-            {error ? <p className="text-sm text-[#ff9ca5]">{error}</p> : null}
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
             <button
               type="submit"
-              className="w-full rounded bg-[#5b84ff] px-3 py-2 font-medium text-white transition hover:opacity-90"
+              className="w-full rounded bg-primary px-3 py-2 font-medium text-primary-foreground transition hover:opacity-90"
             >
               验证并查看
             </button>
