@@ -167,7 +167,7 @@ export default function CommandPalette() {
                   key={action.id}
                   value={`${action.label} ${action.keywords ?? ''}`}
                   onSelect={() => runAction(action)}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-[#d7dcef] outline-none data-[selected=true]:bg-[#2a3450]"
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-[#d7dcef] outline-none data-[selected=true]:bg-[#3a414f] data-[selected=true]:text-[#f1f4fb]"
                 >
                   {action.kind === 'navigation' ? (
                     <Compass className="size-4 shrink-0 text-[#8e99b8]" />
@@ -191,7 +191,7 @@ export default function CommandPalette() {
                   key={action.id}
                   value={`${action.label} ${action.keywords ?? ''}`}
                   onSelect={() => runAction(action)}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-[#d7dcef] outline-none data-[selected=true]:bg-[#2a3450]"
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-[#d7dcef] outline-none data-[selected=true]:bg-[#3a414f] data-[selected=true]:text-[#f1f4fb]"
                 >
                   {action.kind === 'post' ? (
                     <FileText className="size-4 shrink-0 text-[#8e99b8]" />
