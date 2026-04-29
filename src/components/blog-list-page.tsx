@@ -811,7 +811,7 @@ export default function BlogListPage({
           {activePost ? (
             <div
               className={cn(
-                'sticky top-0 z-20 -m-5 mb-4 flex flex-col items-start gap-3 border-b border-border px-5 py-1.5 sm:flex-row sm:justify-between xl:-mx-6 xl:px-6',
+                'sticky top-0 z-20 -m-5 mb-4 flex flex-col items-start gap-3 border-b border-border px-5 py-[5.4px] sm:flex-row sm:justify-between xl:-mx-6 xl:px-6',
                 !activePost.meta.title && 'hidden sm:flex',
               )}
             >
