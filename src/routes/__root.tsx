@@ -1,6 +1,9 @@
-import { HeadContent, Link, Scripts, createRootRoute } from '@tanstack/react-router'
+import { HeadContent, Link, Scripts, createRootRoute, useRouterState } from '@tanstack/react-router'
 import { SearchX } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
 import CommandPalette from '../components/command-palette'
+import { clearAuthed, isAuthed, setAuthed, verifyPassword } from '../lib/auth'
 
 import appCss from '../styles.css?url'
 
@@ -53,11 +56,96 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="vscode-app font-sans antialiased wrap-anywhere selection:bg-[#3a414f] selection:text-[#f1f4fb]">
         <div className="vscode-workbench">
-          <div className="flex-1 overflow-hidden">{children}</div>
+          <div className="flex-1 overflow-hidden">
+            <AuthGate>{children}</AuthGate>
+          </div>
         </div>
         <CommandPalette />
         <Scripts />
       </body>
     </html>
+  )
+}
+
+function isPublicPath(pathname: string) {
+  return /^\/s\/[^/]+$/.test(pathname)
+}
+
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false)
+  const [authed, setAuthedState] = useState(false)
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
+
+  useEffect(() => {
+    setMounted(true)
+    setAuthedState(isAuthed())
+  }, [])
+
+  const isPublic = useMemo(() => isPublicPath(pathname), [pathname])
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!verifyPassword(password)) {
+      setError('密码错误，请重试。')
+      return
+    }
+    setAuthed()
+    setAuthedState(true)
+    setPassword('')
+    setError('')
+  }
+
+  function handleLogout() {
+    clearAuthed()
+    setAuthedState(false)
+  }
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-[#1e1e1e]" />
+  }
+
+  if (!isPublic && !authed) {
+    return (
+      <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6">
+        <div className="rounded-lg border border-[#3c4353] bg-[#20252e] p-6 shadow">
+          <h1 className="mb-2 text-xl font-semibold text-[#f1f4fb]">需要登录</h1>
+          <p className="mb-5 text-sm text-[#bfc8dc]">请输入访问密码以继续浏览此站点内容。</p>
+          <form className="space-y-3" onSubmit={handleSubmit}>
+            <input
+              autoFocus
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="w-full rounded border border-[#3c4353] bg-[#14171f] px-3 py-2 text-[#f1f4fb] outline-none focus:border-[#5b84ff]"
+              placeholder="输入访问密码"
+            />
+            {error ? <p className="text-sm text-[#ff9ca5]">{error}</p> : null}
+            <button
+              type="submit"
+              className="w-full rounded bg-[#5b84ff] px-3 py-2 font-medium text-white transition hover:opacity-90"
+            >
+              登录
+            </button>
+          </form>
+        </div>
+      </main>
+    )
+  }
+
+  return (
+    <>
+      {!isPublic ? (
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="fixed right-4 top-4 z-50 rounded border border-[#3c4353] bg-[#20252e] px-3 py-1 text-xs text-[#f1f4fb] hover:bg-[#2a3040]"
+        >
+          退出登录
+        </button>
+      ) : null}
+      {children}
+    </>
   )
 }
