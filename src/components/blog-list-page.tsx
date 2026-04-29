@@ -613,7 +613,7 @@ export default function BlogListPage({
     <main className="page-shell">
       {showMobileTree ? (
         <div
-          className={cn('mobile-tree-drawer xl:hidden print:hidden', mobileTreeOpen && 'mobile-tree-drawer-open')}
+          className={cn('mobile-tree-drawer xl:hidden', mobileTreeOpen && 'mobile-tree-drawer-open')}
           role="dialog"
           aria-modal="true"
           aria-label="目录"
@@ -677,13 +677,13 @@ export default function BlogListPage({
 
       <div
         className={cn(
-          'main-grid print:block',
+          'main-grid',
           !showToc && !sidebarsHidden && 'main-grid-no-toc',
           sidebarsHidden && 'main-grid-focus-mode',
         )}
         style={mainGridStyle}
       >
-        <div className={cn('blog-side-panel print:hidden', sidebarsHidden && 'blog-side-panel-focus', activePane === 'left' && !sidebarsHidden && 'pane-focused')}>
+        <div className={cn('blog-side-panel', sidebarsHidden && 'blog-side-panel-focus', activePane === 'left' && !sidebarsHidden && 'pane-focused')}>
           <div className="vscode-explorer-shell">
             <VscodeActivityBar
               active="files"
@@ -725,21 +725,21 @@ export default function BlogListPage({
           </div>
         </div>
 
-        <section className="blog-col-main print:h-auto print:overflow-visible print:border-0 print:bg-white print:px-0 print:pt-0 print:pb-0">
+        <section className="blog-col-main">
           {activePost ? (
-            <div className="sticky -top-2 z-20 -m-5 mb-4 flex flex-col items-start gap-3 px-5 border-b border-[#2f3750] py-1.5 sm:flex-row sm:justify-between xl:-mx-6 xl:px-6 print:static print:mx-0 print:top-0 print:mb-0 print:border-0 print:bg-transparent print:px-0 print:py-0">
+            <div className="sticky -top-2 z-20 -m-5 mb-4 flex flex-col items-start gap-3 px-5 border-b border-[#2f3750] py-1.5 sm:flex-row sm:justify-between xl:-mx-6 xl:px-6">
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 bg-[#1f2638]/88 backdrop-blur-md backdrop-saturate-150 supports-backdrop-filter:bg-[#1f2638]/70 print:hidden"
+                className="pointer-events-none absolute inset-0 bg-[#1f2638]/88 backdrop-blur-md backdrop-saturate-150 supports-backdrop-filter:bg-[#1f2638]/70"
               />
               <div className="relative z-10 flex w-full flex-col items-start gap-3 sm:flex-row sm:justify-between">
                 {activePost.meta.title ? (
-                  <h1 className="m-0 flex-1 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] print:text-black xl:text-[28px]">
+                  <h1 className="m-0 flex-1 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] xl:text-[28px]">
                     {activePost.meta.title}
                   </h1>
                 ) : null}
                 {currentHashid ? (
-                  <div ref={shareMenuRef} className="relative self-end hidden print:hidden sm:ml-auto sm:block sm:self-auto">
+                  <div ref={shareMenuRef} className="relative self-end hidden sm:ml-auto sm:block sm:self-auto">
                     <div className="inline-flex overflow-hidden rounded border border-[#2f3750] bg-[#202739] text-sm text-[#dbe5ff]">
                       <button
                         type="button"
@@ -836,7 +836,7 @@ export default function BlogListPage({
             </div>
           ) : null}
           <div className="blog-main-inner">
-            <div className="mb-4 flex justify-end xl:hidden print:hidden">
+            <div className="mb-4 flex justify-end xl:hidden">
               <button
                 type="button"
                 onClick={openMobileTree}
@@ -849,16 +849,16 @@ export default function BlogListPage({
             <div key={currentHashid ?? 'empty'} className="blog-content-fade-enter">
               {activePost ? (
                 <>
-                <header className="mb-6 print:mb-4">
+                <header className="mb-6">
                   {activePost.meta.date ? (
-                    <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-[#9aa6c5] print:text-gray-600">
+                    <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-[#9aa6c5]">
                       <CalendarDays className="size-3.5 shrink-0" />
                       <time>{activePost.meta.date}</time>
                     </p>
                   ) : null}
                   {activePost.meta.description ? (
-                    <p className="mt-4 inline-flex w-full items-start gap-2 rounded-md border border-[#2a3450] bg-[#131b2c] px-3 py-2 text-[13px] leading-6 text-[#b7c2df] print:border-gray-300 print:bg-white print:text-gray-700">
-                      <Quote className="mt-1 size-3 shrink-0 text-[#7f8aac] print:text-gray-500" />
+                    <p className="mt-4 inline-flex w-full items-start gap-2 rounded-md border border-[#2a3450] bg-[#131b2c] px-3 py-2 text-[13px] leading-6 text-[#b7c2df]">
+                      <Quote className="mt-1 size-3 shrink-0 text-[#7f8aac]" />
                       <span>{activePost.meta.description}</span>
                     </p>
                   ) : null}
@@ -881,7 +881,7 @@ export default function BlogListPage({
                   </div>
                 )}
 
-                <nav className="mt-10 grid gap-3 border-t border-[#2f3750] pt-6 print:hidden sm:grid-cols-2">
+                <nav className="mt-10 grid gap-3 border-t border-[#2f3750] pt-6 sm:grid-cols-2">
                   {prevPost ? (
                     <button
                       type="button"
@@ -970,7 +970,7 @@ export default function BlogListPage({
         </section>
 
         {showToc && !sidebarsHidden ? (
-          <aside className={cn('blog-col-right blog-side-panel print:hidden', activePane === 'right' && 'pane-focused')}>
+          <aside className={cn('blog-col-right blog-side-panel', activePane === 'right' && 'pane-focused')}>
             <p className="toc-panel-title flex w-full items-center gap-1.5">
               <ListTree className="size-4 shrink-0" />
               <span>本页目录</span>

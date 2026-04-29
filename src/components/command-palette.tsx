@@ -134,7 +134,7 @@ export default function CommandPalette() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-[#0d111b]/70 px-4 pt-[10dvh] backdrop-blur-[1px] print:hidden"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-[#0d111b]/70 px-4 pt-[10dvh] backdrop-blur-[1px]"
       onClick={() => setOpen(false)}
       role="presentation"
     >
