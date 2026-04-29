@@ -371,7 +371,19 @@ export default function BlogListPage({
       return
     }
     const targetUrl = buildShareUrl(shareToken)
-    window.open(targetUrl, '_blank', 'noopener,noreferrer')
+    const anchor = document.createElement('a')
+    anchor.href = targetUrl
+    anchor.target = '_blank'
+    anchor.rel = 'noopener noreferrer'
+    anchor.style.display = 'none'
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+
+    // fallback for environments where synthetic anchor click is blocked
+    if (document.visibilityState === 'visible') {
+      window.open(targetUrl, '_blank')
+    }
   }
 
   const runShareAction = async () => {
