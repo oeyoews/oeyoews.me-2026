@@ -6,6 +6,7 @@ export function getRouter() {
     routeTree,
     history: typeof window !== 'undefined' ? createBrowserHistory() : undefined,
     scrollRestoration: true,
+    scrollToTopSelectors: ['.blog-col-main'],
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
   })
