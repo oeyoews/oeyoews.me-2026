@@ -711,9 +711,6 @@ export default function BlogListPage({
               drawerTouchStartYRef.current = null
             }}
           >
-            <div className="border-b border-border px-3 py-2">
-              <p className="text-sm font-medium text-foreground">目录</p>
-            </div>
             <div className="min-h-0 flex-1 overflow-y-auto pb-16">
               <BlogFileTree
                 items={treeItems}
@@ -728,10 +725,11 @@ export default function BlogListPage({
             <button
               type="button"
               onClick={closeMobileTree}
-              className="absolute right-3 bottom-3 inline-flex items-center gap-1 rounded border border-border bg-card/95 px-2.5 py-1.5 text-xs text-foreground/80 shadow-sm backdrop-blur hover:bg-muted hover:text-foreground"
+              aria-label="关闭目录"
+              className="absolute right-3 bottom-3 inline-flex size-8 items-center justify-center rounded border border-border bg-card/95 text-foreground/80 shadow-sm backdrop-blur hover:bg-muted hover:text-foreground"
             >
               <X className="size-3.5 shrink-0" />
-              <span>关闭</span>
+              <span className="sr-only">关闭目录</span>
             </button>
           </div>
         </div>
@@ -789,7 +787,12 @@ export default function BlogListPage({
 
         <section className="blog-col-main">
           {activePost ? (
-            <div className="sticky -top-2 z-20 -m-5 mb-4 flex flex-col items-start gap-3 px-5 border-b border-border py-1.5 sm:flex-row sm:justify-between xl:-mx-6 xl:px-6">
+            <div
+              className={cn(
+                'sticky -top-2 z-20 -m-5 mb-4 flex flex-col items-start gap-3 border-b border-border px-5 py-1.5 sm:flex-row sm:justify-between xl:-mx-6 xl:px-6',
+                !activePost.meta.title && 'hidden sm:flex',
+              )}
+            >
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0 bg-[color-mix(in_srgb,var(--color-secondary)_88%,transparent)] backdrop-blur-md backdrop-saturate-150 supports-backdrop-filter:bg-[color-mix(in_srgb,var(--color-secondary)_70%,transparent)]"
@@ -914,10 +917,11 @@ export default function BlogListPage({
               <button
                 type="button"
                 onClick={openMobileTree}
-                className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 text-sm text-foreground hover:bg-muted"
+                aria-label="打开目录树"
+                className="inline-flex size-9 items-center justify-center rounded border border-border bg-card text-foreground hover:bg-muted"
               >
                 <PanelLeftOpen className="size-4 shrink-0" />
-                <span>打开目录树</span>
+                <span className="sr-only">打开目录树</span>
               </button>
             </div>
             <div key={currentHashid ?? 'empty'} className="blog-content-fade-enter">

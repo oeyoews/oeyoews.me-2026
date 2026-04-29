@@ -19,7 +19,7 @@ export default function BlogReadonlyView({ post, image }: BlogReadonlyViewProps)
   if (!post && !image) {
     return (
       <main className="mx-auto flex min-h-[60vh] max-w-3xl flex-col items-center justify-center gap-3 px-6 text-center">
-        <div className="fixed top-4 right-4">
+        <div className="mb-4 flex justify-end sm:fixed sm:top-4 sm:right-4 sm:z-20">
           <ShareThemeToggle />
         </div>
         <SearchX className="size-9 text-[#8f9bbd]" />
@@ -32,7 +32,7 @@ export default function BlogReadonlyView({ post, image }: BlogReadonlyViewProps)
   if (image) {
     return (
       <main className="mx-auto w-full max-w-4xl px-4 pt-5 pb-10">
-        <div className="fixed top-4 right-4 z-20">
+        <div className="mb-4 flex justify-end sm:fixed sm:top-4 sm:right-4 sm:z-20">
           <ShareThemeToggle />
         </div>
         <header className="mb-6 space-y-2">
@@ -57,7 +57,7 @@ export default function BlogReadonlyView({ post, image }: BlogReadonlyViewProps)
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 pt-5 pb-10">
-      <div className="fixed top-4 right-4 z-20">
+      <div className="mb-4 flex justify-end sm:fixed sm:top-4 sm:right-4 sm:z-20">
         <ShareThemeToggle />
       </div>
       <article>

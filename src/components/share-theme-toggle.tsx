@@ -37,7 +37,7 @@ export default function ShareThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs text-foreground/80 hover:bg-muted hover:text-foreground"
+      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs text-foreground/80 hover:bg-muted hover:text-foreground print:hidden"
       aria-label="切换明暗主题"
       title={`当前：${theme === 'dark' ? '暗色' : '亮色'}，点击切换`}
     >

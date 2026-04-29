@@ -428,6 +428,23 @@
     line-height: 1.75;
   }
 
+  .blog-article-content :where(ul, ol):has(input[type='checkbox']) {
+    list-style: none;
+    padding-left: 0;
+  }
+
+  .blog-article-content :where(li):has(input[type='checkbox']) {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .blog-article-content :where(li):has(input[type='checkbox']) > input[type='checkbox'] {
+    margin-top: 0.42em;
+    accent-color: var(--color-primary);
+    cursor: default;
+  }
+
   .blog-article-content :where(p:not(blockquote p)) {
     text-indent: 2em;
   }
