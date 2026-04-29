@@ -823,7 +823,7 @@ export default function BlogListPage({
           {activePost ? (
             <div
               className={cn(
-                'relative z-20 mb-4 flex flex-col items-start gap-3 border-b border-border px-5 py-[5.4px] sm:-m-5 sm:sticky sm:top-0 sm:flex-row sm:justify-between xl:-mx-6 xl:px-6',
+                'relative z-20 mb-4 flex flex-col items-start gap-3 border-b border-border px-5 py-[5.4px] sm:-mx-5 sm:-mt-5 sm:sticky sm:top-0 sm:flex-row sm:justify-between xl:-mx-6 xl:px-6',
                 !activePost.meta.title && 'hidden sm:flex',
               )}
             >
@@ -994,7 +994,7 @@ export default function BlogListPage({
                 <>
                 <header className="mb-6">
                   {activePost.meta.date ? (
-                    <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                    <p className="mt-3 flex w-full items-center justify-end gap-1.5 text-[12px] text-muted-foreground">
                       <CalendarDays className="size-3.5 shrink-0" />
                       <time>{activePost.meta.date}</time>
                     </p>
@@ -1115,7 +1115,7 @@ export default function BlogListPage({
         {showToc && !sidebarsHidden ? (
           <aside
             className={cn(
-              'blog-col-right blog-side-panel flex h-full max-h-dvh min-h-0 flex-col',
+              'blog-col-right blog-side-panel h-full max-h-dvh min-h-0 xl:flex! xl:flex-col',
               activePane === 'right' && 'pane-focused',
             )}
           >
