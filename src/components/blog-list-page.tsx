@@ -1101,12 +1101,17 @@ export default function BlogListPage({
         </section>
 
         {showToc && !sidebarsHidden ? (
-          <aside className={cn('blog-col-right blog-side-panel', activePane === 'right' && 'pane-focused')}>
+          <aside
+            className={cn(
+              'blog-col-right blog-side-panel flex h-full max-h-dvh min-h-0 flex-col',
+              activePane === 'right' && 'pane-focused',
+            )}
+          >
             <p className="toc-panel-title flex w-full items-center gap-1.5">
               <ListTree className="size-4 shrink-0" />
               <span>本页目录</span>
             </p>
-            <ul className="toc-list">
+            <ul className="toc-list min-h-0 flex-1 overflow-y-auto">
               {toc.map((item) => (
                 <li
                   key={`${item.level}-${item.id}`}
