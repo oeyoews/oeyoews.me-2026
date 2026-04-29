@@ -2,8 +2,10 @@ import { Link } from '@tanstack/react-router'
 import {
   ChevronRight,
   Monitor,
+  Sparkles,
 } from 'lucide-react'
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import { blogUiConfig } from '@/blog/config'
 import { cn } from '@/lib/utils'
 
 type BlogFileTreeProps = {
@@ -289,9 +291,15 @@ export default function BlogFileTree({
 
   return (
     <aside className="flex h-full max-h-dvh min-h-0 flex-col">
-      <p className="explorer-heading flex w-full items-center gap-1.5">
-        <Monitor aria-hidden="true" className="size-4 shrink-0 text-sky-400" />
-        <span>文件夹</span>
+      <p className="explorer-heading flex w-full items-center justify-between gap-2">
+        <span className="inline-flex min-w-0 items-center gap-1.5">
+          <Monitor aria-hidden="true" className="size-4 shrink-0 text-sky-400" />
+          <span>文件夹</span>
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#3a4a73] bg-[#24314d] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[#c9d7fb]">
+          <Sparkles aria-hidden="true" className="size-3 shrink-0 text-[#8fb3ff]" />
+          <span>{blogUiConfig.explorerVersion}</span>
+        </span>
       </p>
       <ul className="explorer-tree-list min-h-0 flex-1 overflow-y-auto">
         {topLevelNodes.map((node) => (
