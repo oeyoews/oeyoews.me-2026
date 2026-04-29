@@ -710,7 +710,7 @@ export default function BlogListPage({
               {activePost ? (
                 <>
                 <header className="mb-6 print:mb-4">
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="sticky top-0 z-20 -mx-2 mb-4 flex flex-col items-start gap-3 border-b border-[#2f3750] bg-[#1f2638]/95 px-2 py-2 backdrop-blur sm:flex-row sm:justify-between print:static print:mx-0 print:mb-0 print:border-0 print:bg-transparent print:px-0 print:py-0 print:backdrop-blur-none">
                     {activePost.meta.title ? (
                       <h1 className="m-0 flex-1 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] print:text-black xl:text-[28px]">
                         {activePost.meta.title}
@@ -719,7 +719,7 @@ export default function BlogListPage({
                       <span />
                     )}
                     {currentHashid ? (
-                      <div ref={shareMenuRef} className="relative print:hidden">
+                      <div ref={shareMenuRef} className="relative self-end print:hidden sm:self-auto">
                         <div className="inline-flex overflow-hidden rounded border border-[#2f3750] bg-[#202739] text-sm text-[#dbe5ff]">
                           <button
                             type="button"
