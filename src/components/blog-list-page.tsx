@@ -652,7 +652,7 @@ export default function BlogListPage({
                           params: { hashid: prevPost.hashid },
                         })
                       }
-                      className="rounded-lg border border-[#2f3750] bg-[#12182a] px-4 py-3 text-left text-sm text-[#b1bcda] transition-colors hover:border-[#3c4668] hover:text-[#e7ecff]"
+                      className="cursor-pointer rounded-lg border border-[#2f3750] bg-[#12182a] px-4 py-3 text-left text-sm text-[#b1bcda] transition-colors hover:border-[#3c4668] hover:text-[#e7ecff]"
                     >
                       <span className="mb-1 inline-flex items-center gap-1 text-xs text-[#8f9bbd]">
                         <ArrowLeft className="size-3.5 shrink-0" />
@@ -681,7 +681,7 @@ export default function BlogListPage({
                           params: { hashid: nextPost.hashid },
                         })
                       }
-                      className="rounded-lg border border-[#2f3750] bg-[#12182a] px-4 py-3 text-right text-sm text-[#b1bcda] transition-colors hover:border-[#3c4668] hover:text-[#e7ecff]"
+                      className="cursor-pointer rounded-lg border border-[#2f3750] bg-[#12182a] px-4 py-3 text-right text-sm text-[#b1bcda] transition-colors hover:border-[#3c4668] hover:text-[#e7ecff]"
                     >
                       <span className="mb-1 inline-flex items-center gap-1 text-xs text-[#8f9bbd]">
                         <span>下一篇</span>
