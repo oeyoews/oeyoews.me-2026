@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Streamdown } from 'streamdown'
 import { createCodePlugin } from '@streamdown/code'
 import { createCjkPlugin } from '@streamdown/cjk'
-import { ArrowLeft, ArrowRight, CalendarDays, Check, FileText, Link2, ListTree, PanelLeftOpen, Quote, SearchX, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, Copy, FileText, Link2, ListTree, PanelLeftOpen, Quote, SearchX, X } from 'lucide-react'
 import type { BlogImage, BlogPost, BlogPostMeta, BlogTreeItem } from '../blog/posts'
 import { encodeShareId } from '../blog/share-id'
 import BlogFileTree from './blog-file-tree'
@@ -108,8 +108,11 @@ export default function BlogListPage({
   const [focusedTreePath, setFocusedTreePath] = useState<string | undefined>(undefined)
   const [openDirectoryPaths, setOpenDirectoryPaths] = useState<string[]>([])
   const [toggleDirectoryRequest, setToggleDirectoryRequest] = useState<{ path: string; nonce: number }>()
-  const [shareState, setShareState] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const [shareMenuOpen, setShareMenuOpen] = useState(false)
+  const [shareAction, setShareAction] = useState<'copy-link' | 'copy-article'>('copy-link')
+  const [shareState, setShareState] = useState<'idle' | 'copied-link' | 'copied-article' | 'failed'>('idle')
   const shareResetTimerRef = useRef<number | null>(null)
+  const shareMenuRef = useRef<HTMLDivElement>(null)
   const leftPaneEntries = useMemo(() => {
     type NavNode = {
       name: string
@@ -228,24 +231,48 @@ export default function BlogListPage({
     target.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
-  const shareCurrent = async () => {
-    if (!currentHashid) return
+  const resetShareStateTimer = (nextState: 'copied-link' | 'copied-article' | 'failed') => {
     if (shareResetTimerRef.current !== null) {
       window.clearTimeout(shareResetTimerRef.current)
       shareResetTimerRef.current = null
     }
+    setShareState(nextState)
+    shareResetTimerRef.current = window.setTimeout(() => setShareState('idle'), nextState === 'failed' ? 1600 : 1200)
+  }
+
+  const shareCurrent = async () => {
+    if (!currentHashid) return
 
     const shareId = encodeShareId(currentHashid)
     if (!shareId) {
-      setShareState('failed')
-      shareResetTimerRef.current = window.setTimeout(() => setShareState('idle'), 1200)
+      resetShareStateTimer('failed')
       return
     }
 
     const url = `${window.location.origin}/s/${shareId}`
     const ok = await copyTextToClipboard(url)
-    setShareState(ok ? 'copied' : 'failed')
-    shareResetTimerRef.current = window.setTimeout(() => setShareState('idle'), ok ? 1200 : 1600)
+    resetShareStateTimer(ok ? 'copied-link' : 'failed')
+  }
+
+  const copyCurrentArticle = async () => {
+    if (!activePost) return
+
+    const lines: string[] = []
+    if (activePost.meta.title) lines.push(`# ${activePost.meta.title}`)
+    if (activePost.meta.date) lines.push('', `> ${activePost.meta.date}`)
+    const content = activePost.content.trim()
+    if (content) lines.push('', content)
+    const text = lines.join('\n').trim()
+    const ok = await copyTextToClipboard(text || activePost.meta.title || '')
+    resetShareStateTimer(ok ? 'copied-article' : 'failed')
+  }
+
+  const runShareAction = async () => {
+    if (shareAction === 'copy-link') {
+      await shareCurrent()
+      return
+    }
+    await copyCurrentArticle()
   }
 
   useEffect(() => {
@@ -302,9 +329,29 @@ export default function BlogListPage({
 
   useEffect(() => {
     return () => {
-      if (shareResetTimerRef.current !== null) window.clearTimeout(shareResetTimerRef.current)
+      if (shareResetTimerRef.current !== null) {
+        window.clearTimeout(shareResetTimerRef.current)
+      }
     }
   }, [])
+
+  useEffect(() => {
+    if (!shareMenuOpen) return
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!shareMenuRef.current?.contains(event.target as Node)) {
+        setShareMenuOpen(false)
+      }
+    }
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShareMenuOpen(false)
+    }
+    window.addEventListener('mousedown', handlePointerDown)
+    window.addEventListener('keydown', handleEsc)
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown)
+      window.removeEventListener('keydown', handleEsc)
+    }
+  }, [shareMenuOpen])
 
   useEffect(() => {
     if (!currentHashid) return
@@ -672,24 +719,79 @@ export default function BlogListPage({
                       <span />
                     )}
                     {currentHashid ? (
-                      <button
-                        type="button"
-                        onClick={shareCurrent}
-                        className="inline-flex items-center gap-1.5 rounded border border-[#2f3750] bg-[#202739] px-3 py-1.5 text-sm text-[#dbe5ff] hover:bg-[#2a3450] print:hidden"
-                        aria-label="复制只读分享链接"
-                      >
-                        {shareState === 'copied' ? (
-                          <>
-                            <Check className="size-4 shrink-0" />
-                            <span>已复制</span>
-                          </>
-                        ) : (
-                          <>
-                            <Link2 className="size-4 shrink-0" />
-                            <span>{shareState === 'failed' ? '复制失败' : '分享'}</span>
-                          </>
-                        )}
-                      </button>
+                      <div ref={shareMenuRef} className="relative print:hidden">
+                        <div className="inline-flex overflow-hidden rounded border border-[#2f3750] bg-[#202739] text-sm text-[#dbe5ff]">
+                          <button
+                            type="button"
+                            onClick={runShareAction}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 hover:bg-[#2a3450]"
+                          >
+                            {shareState === 'copied-link' || shareState === 'copied-article' ? (
+                              <Check className="size-4 shrink-0" />
+                            ) : (
+                              <Copy className="size-4 shrink-0" />
+                            )}
+                            <span>
+                              {shareState === 'copied-link'
+                                ? '已复制链接'
+                                : shareState === 'copied-article'
+                                  ? '已复制文章'
+                                  : shareState === 'failed'
+                                    ? '复制失败'
+                                    : shareAction === 'copy-link'
+                                      ? '复制分享链接'
+                                      : '复制文章'}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShareMenuOpen((prev) => !prev)}
+                            className="inline-flex items-center border-l border-[#2f3750] px-2 hover:bg-[#2a3450]"
+                            aria-haspopup="menu"
+                            aria-expanded={shareMenuOpen}
+                            aria-label="切换分享动作"
+                          >
+                            <ChevronDown className="size-4 shrink-0 opacity-80" />
+                          </button>
+                        </div>
+                        {shareMenuOpen ? (
+                          <div
+                            role="menu"
+                            className="absolute top-[calc(100%+6px)] right-0 z-20 min-w-[190px] rounded-md border border-[#2f3750] bg-[#171f30] p-1 shadow-lg"
+                          >
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setShareAction('copy-link')
+                                setShareMenuOpen(false)
+                              }}
+                              className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-[#dbe5ff] hover:bg-[#2a3450]"
+                            >
+                              <Link2 className="size-3.5 shrink-0" />
+                              <span>复制分享链接</span>
+                              {shareAction === 'copy-link' ? (
+                                <Check className="ml-auto size-3.5 shrink-0 text-[#9fb0d8]" />
+                              ) : null}
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setShareAction('copy-article')
+                                setShareMenuOpen(false)
+                              }}
+                              className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-[#dbe5ff] hover:bg-[#2a3450]"
+                            >
+                              <FileText className="size-3.5 shrink-0" />
+                              <span>复制文章</span>
+                              {shareAction === 'copy-article' ? (
+                                <Check className="ml-auto size-3.5 shrink-0 text-[#9fb0d8]" />
+                              ) : null}
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
                   {activePost.meta.date ? (
