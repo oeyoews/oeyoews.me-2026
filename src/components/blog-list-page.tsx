@@ -760,7 +760,6 @@ export default function BlogListPage({
       <div
         className={cn(
           'main-grid',
-          !showToc && !sidebarsHidden && 'main-grid-no-toc',
           sidebarsHidden && 'main-grid-focus-mode',
         )}
         style={mainGridStyle}
@@ -807,11 +806,12 @@ export default function BlogListPage({
           </div>
         </div>
 
+        <div className={cn('blog-content-columns', (!showToc || sidebarsHidden) && 'blog-content-columns-no-toc')}>
         <section className="blog-col-main">
           {activePost ? (
             <div
               className={cn(
-                'sticky -top-2 z-20 -m-5 mb-4 flex flex-col items-start gap-3 border-b border-border px-5 py-1.5 sm:flex-row sm:justify-between xl:-mx-6 xl:px-6',
+                'sticky top-0 z-20 -m-5 mb-4 flex flex-col items-start gap-3 border-b border-border px-5 py-1.5 sm:flex-row sm:justify-between xl:-mx-6 xl:px-6',
                 !activePost.meta.title && 'hidden sm:flex',
               )}
             >
@@ -821,7 +821,7 @@ export default function BlogListPage({
               />
               <div className="relative z-10 flex w-full flex-col items-start gap-3 sm:flex-row sm:justify-between">
                 {activePost.meta.title ? (
-                  <h1 className="m-0 flex-1 text-[24px] leading-[1.2] font-semibold tracking-tight text-foreground xl:text-[28px]">
+                  <h1 className="m-0 flex-1 text-xl leading-[1.2] font-semibold tracking-tight text-foreground xl:text-2xl">
                     {activePost.meta.title}
                   </h1>
                 ) : null}
@@ -1111,7 +1111,7 @@ export default function BlogListPage({
               <ListTree className="size-4 shrink-0" />
               <span>本页目录</span>
             </p>
-            <ul className="toc-list min-h-0 flex-1 overflow-y-auto">
+            <ul className="toc-list min-h-0 flex-1 overflow-y-auto overscroll-contain">
               {toc.map((item) => (
                 <li
                   key={`${item.level}-${item.id}`}
@@ -1137,6 +1137,7 @@ export default function BlogListPage({
             </ul>
           </aside>
         ) : null}
+        </div>
       </div>
     </main>
   )

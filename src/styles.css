@@ -150,7 +150,7 @@
 
   .vscode-workbench {
     @apply flex min-h-dvh flex-col;
-    background: var(--color-background);
+    background: var(--color-card);
   }
 
   .vscode-statusbar {
@@ -165,12 +165,8 @@
   }
 
   .main-grid {
-    @apply grid h-full min-h-0 flex-1 gap-0 overflow-hidden xl:grid-cols-[var(--left-sidebar-width,300px)_minmax(0,1fr)_260px];
+    @apply grid h-full min-h-0 flex-1 gap-0 overflow-hidden xl:grid-cols-[var(--left-sidebar-width,300px)_minmax(0,1fr)];
     transition: grid-template-columns 220ms ease;
-  }
-
-  .main-grid-no-toc {
-    @apply xl:grid-cols-[var(--left-sidebar-width,300px)_minmax(0,1fr)];
   }
 
   .main-grid-focus-mode {
@@ -182,12 +178,20 @@
     min-width: 0;
   }
 
+  .blog-content-columns {
+    @apply min-h-0 xl:grid xl:h-dvh xl:grid-cols-[minmax(0,1fr)_260px] xl:overflow-y-auto xl:overscroll-y-contain;
+  }
+
+  .blog-content-columns-no-toc {
+    @apply xl:grid-cols-[minmax(0,1fr)];
+  }
+
   .blog-col-left {
     @apply xl:pr-0;
   }
 
   .blog-col-main {
-    @apply h-dvh min-w-0 overflow-y-auto px-5 pt-2 pb-5 xl:border-x xl:px-6;
+    @apply h-dvh min-w-0 overflow-y-auto px-5 pt-2 pb-5 xl:h-auto xl:overflow-visible xl:border-l xl:px-6;
     background: var(--color-card);
     border-color: var(--color-border);
   }
@@ -232,7 +236,7 @@
   }
 
   .blog-col-right {
-    @apply xl:pl-0;
+    @apply xl:sticky xl:top-0 xl:h-dvh xl:self-start xl:pl-0;
     user-select: none;
   }
 
@@ -245,15 +249,11 @@
     background: var(--color-secondary);
   }
 
-  .blog-col-right.blog-side-panel {
-    border-left: 1px solid var(--color-border);
-  }
-
-  .pane-focused {
+  /* .pane-focused {
     box-shadow:
       inset 0 0 0 1px #7f8797,
       inset 0 0 0 2px rgba(244, 247, 255, 0.06);
-  }
+  } */
 
   .vscode-explorer-shell {
     @apply relative flex h-full;
@@ -583,7 +583,7 @@
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in srgb, var(--color-foreground) 28%, transparent) transparent;
+    scrollbar-color: color-mix(in srgb, var(--color-foreground) 28%, transparent) var(--color-card);
   }
 
   *::-webkit-scrollbar {
@@ -592,7 +592,7 @@
   }
 
   *::-webkit-scrollbar-track {
-    background: transparent;
+    background: var(--color-card);
   }
 
   *::-webkit-scrollbar-thumb {
@@ -611,7 +611,7 @@
   }
 
   *::-webkit-scrollbar-corner {
-    background: transparent;
+    background: var(--color-card);
   }
 
   *::-webkit-scrollbar-button {

@@ -139,7 +139,7 @@ export default function BlogReadonlyView({ post, image, stream = true }: BlogRea
 
   if (!post && !image) {
     return (
-      <main className="mx-auto flex min-h-[60vh] max-w-3xl flex-col items-center justify-center gap-3 px-6 text-center">
+      <main className="mx-auto flex min-h-[60vh] w-full max-w-3xl flex-col items-center justify-center gap-3 bg-(--color-card) px-6 text-center">
         <div className="mb-4 flex justify-end sm:fixed sm:top-4 sm:right-4 sm:z-20">
           <ShareThemeToggle />
         </div>
@@ -152,7 +152,7 @@ export default function BlogReadonlyView({ post, image, stream = true }: BlogRea
 
   if (image) {
     return (
-      <main className="mx-auto w-full max-w-4xl px-4 pt-5 pb-10">
+      <main className="mx-auto w-full max-w-4xl bg-(--color-card) px-4 pt-5 pb-10">
         <div className="mb-4 flex justify-end sm:fixed sm:top-4 sm:right-4 sm:z-20">
           <ShareThemeToggle />
         </div>
@@ -162,7 +162,7 @@ export default function BlogReadonlyView({ post, image, stream = true }: BlogRea
           </h1>
           <p className="text-[12px] text-muted-foreground">{image.meta.sourcePath}</p>
         </header>
-        <div className="overflow-hidden rounded-lg border border-border bg-background p-2">
+        <div className="overflow-hidden rounded-lg border border-border bg-(--color-card) p-2">
           <img
             src={image.imageUrl}
             alt={image.meta.title}
@@ -175,7 +175,7 @@ export default function BlogReadonlyView({ post, image, stream = true }: BlogRea
   }
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 pt-5 pb-10">
+    <main className="mx-auto w-full max-w-4xl bg-(--color-card) px-4 pt-5 pb-10">
       <div className="mb-4 flex justify-end sm:fixed sm:top-4 sm:right-4 sm:z-20">
         <ShareThemeToggle />
       </div>
