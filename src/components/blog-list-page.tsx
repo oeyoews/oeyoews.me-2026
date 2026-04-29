@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Streamdown } from 'streamdown'
 import { createCodePlugin } from '@streamdown/code'
 import { createCjkPlugin } from '@streamdown/cjk'
-import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, Copy, FileText, Link2, ListTree, PanelLeftOpen, Quote, SearchX, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, Copy, Download, FileText, Link2, ListTree, PanelLeftOpen, Quote, SearchX, X } from 'lucide-react'
 import type { BlogImage, BlogPost, BlogPostMeta, BlogTreeItem } from '../blog/posts'
 import { encodeShareId } from '../blog/share-id'
 import BlogFileTree from './blog-file-tree'
@@ -109,7 +109,7 @@ export default function BlogListPage({
   const [openDirectoryPaths, setOpenDirectoryPaths] = useState<string[]>([])
   const [toggleDirectoryRequest, setToggleDirectoryRequest] = useState<{ path: string; nonce: number }>()
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
-  const [shareAction, setShareAction] = useState<'copy-link' | 'copy-article'>('copy-link')
+  const [shareAction, setShareAction] = useState<'copy-link' | 'copy-article' | 'download-md'>('copy-link')
   const [shareState, setShareState] = useState<'idle' | 'copied-link' | 'copied-article' | 'failed'>('idle')
   const shareResetTimerRef = useRef<number | null>(null)
   const shareMenuRef = useRef<HTMLDivElement>(null)
@@ -267,12 +267,43 @@ export default function BlogListPage({
     resetShareStateTimer(ok ? 'copied-article' : 'failed')
   }
 
+  const downloadCurrentArticle = () => {
+    if (!activePost || typeof window === 'undefined') return
+
+    const lines: string[] = []
+    if (activePost.meta.title) lines.push(`# ${activePost.meta.title}`)
+    if (activePost.meta.date) lines.push('', `> ${activePost.meta.date}`)
+    const content = activePost.content.trim()
+    if (content) lines.push('', content)
+    const text = lines.join('\n').trim() || activePost.content || ''
+
+    const filenameBase = (activePost.meta.title?.trim() || activePost.meta.hashid || 'article')
+      .replace(/[\\/:*?"<>|]/g, '-')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+
+    const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' })
+    const url = window.URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `${filenameBase || 'article'}.md`
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    window.setTimeout(() => window.URL.revokeObjectURL(url), 0)
+  }
+
   const runShareAction = async () => {
     if (shareAction === 'copy-link') {
       await shareCurrent()
       return
     }
-    await copyCurrentArticle()
+    if (shareAction === 'copy-article') {
+      await copyCurrentArticle()
+      return
+    }
+    downloadCurrentArticle()
   }
 
   useEffect(() => {
@@ -715,11 +746,9 @@ export default function BlogListPage({
                       <h1 className="m-0 flex-1 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] print:text-black xl:text-[28px]">
                         {activePost.meta.title}
                       </h1>
-                    ) : (
-                      <span />
-                    )}
+                    ) : null}
                     {currentHashid ? (
-                      <div ref={shareMenuRef} className="relative self-end print:hidden sm:self-auto">
+                      <div ref={shareMenuRef} className="relative self-end print:hidden sm:ml-auto sm:self-auto">
                         <div className="inline-flex overflow-hidden rounded border border-[#2f3750] bg-[#202739] text-sm text-[#dbe5ff]">
                           <button
                             type="button"
@@ -728,6 +757,8 @@ export default function BlogListPage({
                           >
                             {shareState === 'copied-link' || shareState === 'copied-article' ? (
                               <Check className="size-4 shrink-0" />
+                            ) : shareAction === 'download-md' ? (
+                              <Download className="size-4 shrink-0" />
                             ) : (
                               <Copy className="size-4 shrink-0" />
                             )}
@@ -740,7 +771,9 @@ export default function BlogListPage({
                                     ? '复制失败'
                                     : shareAction === 'copy-link'
                                       ? '复制分享链接'
-                                      : '复制文章'}
+                                      : shareAction === 'copy-article'
+                                        ? '复制文章'
+                                        : '下载 Markdown 文件'}
                             </span>
                           </button>
                           <button
@@ -786,6 +819,21 @@ export default function BlogListPage({
                               <FileText className="size-3.5 shrink-0" />
                               <span>复制文章</span>
                               {shareAction === 'copy-article' ? (
+                                <Check className="ml-auto size-3.5 shrink-0 text-[#9fb0d8]" />
+                              ) : null}
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setShareAction('download-md')
+                                setShareMenuOpen(false)
+                              }}
+                              className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-[#dbe5ff] hover:bg-[#2a3450]"
+                            >
+                              <Download className="size-3.5 shrink-0" />
+                              <span>下载 Markdown 文件</span>
+                              {shareAction === 'download-md' ? (
                                 <Check className="ml-auto size-3.5 shrink-0 text-[#9fb0d8]" />
                               ) : null}
                             </button>

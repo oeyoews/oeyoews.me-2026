@@ -198,6 +198,7 @@
     transform: translateX(-100%);
     transition: transform 220ms ease;
     will-change: transform;
+    user-select: none;
   }
 
   .mobile-tree-panel-open {
@@ -206,6 +207,7 @@
 
   .blog-col-right {
     @apply xl:pl-0;
+    user-select: none;
   }
 
   .blog-side-panel {
@@ -229,6 +231,7 @@
 
   .vscode-explorer-shell {
     @apply relative flex h-full;
+    user-select: none;
   }
 
   .vscode-sidebar-resize-handle {
@@ -353,7 +356,7 @@
     line-height: 1.75;
   }
 
-  .blog-article-content :where(p) {
+  .blog-article-content :where(p:not(blockquote p)) {
     text-indent: 2em;
   }
 
