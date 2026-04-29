@@ -29,7 +29,7 @@ export default function BlogReadonlyView({ post, image }: BlogReadonlyViewProps)
     return (
       <main className="mx-auto w-full max-w-4xl px-4 py-10">
         <header className="mb-6 space-y-2">
-          <h1 className="m-0 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] xl:text-[28px]">
+          <h1 className="m-0 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#d6def5] xl:text-[28px]">
             {image.meta.title}
           </h1>
           <p className="text-[12px] text-[#9aa6c5]">{image.meta.sourcePath}</p>
@@ -53,7 +53,7 @@ export default function BlogReadonlyView({ post, image }: BlogReadonlyViewProps)
       <article>
         <header className="mb-6">
           {post?.meta.title ? (
-            <h1 className="m-0 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] xl:text-[28px]">
+            <h1 className="m-0 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#d6def5] xl:text-[28px]">
               {post.meta.title}
             </h1>
           ) : null}

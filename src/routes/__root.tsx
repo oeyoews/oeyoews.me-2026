@@ -51,7 +51,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <HeadContent />
       </head>
-      <body className="vscode-app font-sans antialiased wrap-anywhere selection:bg-[#264f78] selection:text-[#d4d4d4]">
+      <body className="vscode-app font-sans antialiased wrap-anywhere selection:bg-[#3a414f] selection:text-[#f1f4fb]">
         <div className="vscode-workbench">
           <div className="flex-1 overflow-hidden">{children}</div>
         </div>
