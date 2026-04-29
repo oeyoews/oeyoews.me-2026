@@ -3,8 +3,9 @@ import { useNavigate } from '@tanstack/react-router'
 import { Streamdown } from 'streamdown'
 import { createCodePlugin } from '@streamdown/code'
 import { createCjkPlugin } from '@streamdown/cjk'
-import { ArrowLeft, ArrowRight, CalendarDays, FileText, ListTree, PanelLeftOpen, Quote, SearchX, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarDays, Check, FileText, Link2, ListTree, PanelLeftOpen, Quote, SearchX, X } from 'lucide-react'
 import type { BlogImage, BlogPost, BlogPostMeta, BlogTreeItem } from '../blog/posts'
+import { encodeShareId } from '../blog/share-id'
 import BlogFileTree from './blog-file-tree'
 import VscodeActivityBar from './vscode-activity-bar'
 import { cn } from '@/lib/utils'
@@ -45,6 +46,34 @@ function isEditableTarget(target: EventTarget | null) {
   )
 }
 
+async function copyTextToClipboard(text: string) {
+  if (typeof window === 'undefined') return false
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    // ignore and fallback
+  }
+
+  try {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.setAttribute('readonly', 'true')
+    textarea.style.position = 'fixed'
+    textarea.style.left = '-9999px'
+    textarea.style.top = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(textarea)
+    return ok
+  } catch {
+    return false
+  }
+}
+
 export default function BlogListPage({
   posts,
   treeItems,
@@ -79,6 +108,8 @@ export default function BlogListPage({
   const [focusedTreePath, setFocusedTreePath] = useState<string | undefined>(undefined)
   const [openDirectoryPaths, setOpenDirectoryPaths] = useState<string[]>([])
   const [toggleDirectoryRequest, setToggleDirectoryRequest] = useState<{ path: string; nonce: number }>()
+  const [shareState, setShareState] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const shareResetTimerRef = useRef<number | null>(null)
   const leftPaneEntries = useMemo(() => {
     type NavNode = {
       name: string
@@ -197,6 +228,26 @@ export default function BlogListPage({
     target.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
+  const shareCurrent = async () => {
+    if (!currentHashid) return
+    if (shareResetTimerRef.current !== null) {
+      window.clearTimeout(shareResetTimerRef.current)
+      shareResetTimerRef.current = null
+    }
+
+    const shareId = encodeShareId(currentHashid)
+    if (!shareId) {
+      setShareState('failed')
+      shareResetTimerRef.current = window.setTimeout(() => setShareState('idle'), 1200)
+      return
+    }
+
+    const url = `${window.location.origin}/${shareId}`
+    const ok = await copyTextToClipboard(url)
+    setShareState(ok ? 'copied' : 'failed')
+    shareResetTimerRef.current = window.setTimeout(() => setShareState('idle'), ok ? 1200 : 1600)
+  }
+
   useEffect(() => {
     if (!activePost) {
       setActiveTocId('')
@@ -248,6 +299,12 @@ export default function BlogListPage({
       scrollContainer.removeEventListener('scroll', updateActiveToc)
     }
   }, [activePost?.content])
+
+  useEffect(() => {
+    return () => {
+      if (shareResetTimerRef.current !== null) window.clearTimeout(shareResetTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (!currentHashid) return
@@ -606,11 +663,35 @@ export default function BlogListPage({
               {activePost ? (
                 <>
                 <header className="mb-6 print:mb-4">
-                  {activePost.meta.title ? (
-                    <h1 className="m-0 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] print:text-black xl:text-[28px]">
-                      {activePost.meta.title}
-                    </h1>
-                  ) : null}
+                  <div className="flex items-start justify-between gap-3">
+                    {activePost.meta.title ? (
+                      <h1 className="m-0 flex-1 text-[24px] leading-[1.2] font-semibold tracking-tight text-[#e7ecff] print:text-black xl:text-[28px]">
+                        {activePost.meta.title}
+                      </h1>
+                    ) : (
+                      <span />
+                    )}
+                    {currentHashid ? (
+                      <button
+                        type="button"
+                        onClick={shareCurrent}
+                        className="inline-flex items-center gap-1.5 rounded border border-[#2f3750] bg-[#202739] px-3 py-1.5 text-sm text-[#dbe5ff] hover:bg-[#2a3450] print:hidden"
+                        aria-label="复制只读分享链接"
+                      >
+                        {shareState === 'copied' ? (
+                          <>
+                            <Check className="size-4 shrink-0" />
+                            <span>已复制</span>
+                          </>
+                        ) : (
+                          <>
+                            <Link2 className="size-4 shrink-0" />
+                            <span>{shareState === 'failed' ? '复制失败' : '分享'}</span>
+                          </>
+                        )}
+                      </button>
+                    ) : null}
+                  </div>
                   {activePost.meta.date ? (
                     <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-[#9aa6c5] print:text-gray-600">
                       <CalendarDays className="size-3.5 shrink-0" />
