@@ -18,10 +18,114 @@ type BlogListPageProps = {
   toc?: Array<{ level: 2 | 3; text: string; id: string }>
 }
 
+type KeyboardNavNode = {
+  name: string
+  path: string
+  hashid?: string
+  children: Map<string, KeyboardNavNode>
+}
+
 const code = createCodePlugin({
   themes: ['github-light', 'one-dark-pro'],
 })
 const cjk = createCjkPlugin()
+
+function createKeyboardNavNode(name: string, path = ''): KeyboardNavNode {
+  return {
+    name,
+    path,
+    children: new Map(),
+  }
+}
+
+function compareKeyboardNavNodes(a: KeyboardNavNode, b: KeyboardNavNode) {
+  const aIsIndex = a.name.toLowerCase() === 'index'
+  const bIsIndex = b.name.toLowerCase() === 'index'
+  if (aIsIndex && !bIsIndex) return -1
+  if (!aIsIndex && bIsIndex) return 1
+
+  const aIsFile = Boolean(a.hashid)
+  const bIsFile = Boolean(b.hashid)
+  if (aIsFile && !bIsFile) return 1
+  if (!aIsFile && bIsFile) return -1
+  return a.name.localeCompare(b.name)
+}
+
+function buildKeyboardNavEntries(
+  treeItems: BlogTreeItem[],
+): Array<{ path: string; type: 'dir' | 'file'; hashid?: string }> {
+  const root = createKeyboardNavNode('', '')
+
+  for (const item of treeItems) {
+    const parts = item.treePath.split('/').filter(Boolean)
+    let cursor = root
+    let acc = ''
+
+    for (let i = 0; i < parts.length; i += 1) {
+      const part = parts[i]
+      acc = acc ? `${acc}/${part}` : part
+      const isFile = i === parts.length - 1
+      const key = isFile ? `${part}__file` : `${part}__dir`
+      let next = cursor.children.get(key)
+      if (!next) {
+        next = createKeyboardNavNode(part, acc)
+        cursor.children.set(key, next)
+      }
+      if (isFile) next.hashid = item.hashid
+      cursor = next
+    }
+  }
+
+  const collapseDirectoryChains = (node: KeyboardNavNode): KeyboardNavNode => {
+    if (node.children.size > 0) {
+      const collapsedChildren = new Map<string, KeyboardNavNode>()
+      for (const child of node.children.values()) {
+        const collapsed = collapseDirectoryChains(child)
+        const key = collapsed.hashid ? `${collapsed.name}__file` : `${collapsed.name}__dir`
+        collapsedChildren.set(key, collapsed)
+      }
+      node.children = collapsedChildren
+    }
+
+    if (node.hashid) return node
+
+    while (node.children.size === 1) {
+      const [onlyChild] = Array.from(node.children.values())
+      if (!onlyChild || onlyChild.hashid) break
+      node.name = node.name ? `${node.name}/${onlyChild.name}` : onlyChild.name
+      node.path = node.path ? `${node.path}/${onlyChild.name}` : onlyChild.name
+      node.children = onlyChild.children
+    }
+
+    return node
+  }
+
+  if (root.children.size > 0) {
+    const collapsedRootChildren = new Map<string, KeyboardNavNode>()
+    for (const child of root.children.values()) {
+      const collapsed = collapseDirectoryChains(child)
+      const key = collapsed.hashid ? `${collapsed.name}__file` : `${collapsed.name}__dir`
+      collapsedRootChildren.set(key, collapsed)
+    }
+    root.children = collapsedRootChildren
+  }
+
+  const result: Array<{ path: string; type: 'dir' | 'file'; hashid?: string }> = []
+  const walk = (node: KeyboardNavNode) => {
+    const children = Array.from(node.children.values()).sort(compareKeyboardNavNodes)
+    for (const child of children) {
+      if (child.hashid) {
+        result.push({ path: child.path, type: 'file', hashid: child.hashid })
+      } else {
+        result.push({ path: child.path, type: 'dir' })
+        walk(child)
+      }
+    }
+  }
+
+  walk(root)
+  return result
+}
 
 function toHeadingId(text: string) {
   const normalized = text
@@ -113,57 +217,7 @@ export default function BlogListPage({
   const [shareState, setShareState] = useState<'idle' | 'copied-link' | 'copied-article' | 'failed'>('idle')
   const shareResetTimerRef = useRef<number | null>(null)
   const shareMenuRef = useRef<HTMLDivElement>(null)
-  const leftPaneEntries = useMemo(() => {
-    type NavNode = {
-      name: string
-      path: string
-      hashid?: string
-      children: Map<string, NavNode>
-    }
-    const root: NavNode = { name: '', path: '', children: new Map() }
-
-    for (const item of treeItems) {
-      const parts = item.treePath.split('/').filter(Boolean)
-      let cursor = root
-      let acc = ''
-      for (let i = 0; i < parts.length; i += 1) {
-        const part = parts[i]
-        acc = acc ? `${acc}/${part}` : part
-        let next = cursor.children.get(part)
-        if (!next) {
-          next = { name: part, path: acc, children: new Map() }
-          cursor.children.set(part, next)
-        }
-        if (i === parts.length - 1) {
-          next.hashid = item.hashid
-        }
-        cursor = next
-      }
-    }
-
-    const result: Array<{ path: string; type: 'dir' | 'file'; hashid?: string }> = []
-    const walk = (node: NavNode) => {
-      const children = Array.from(node.children.values()).sort((a, b) => {
-        const aIsFile = Boolean(a.hashid)
-        const bIsFile = Boolean(b.hashid)
-        if (aIsFile && !bIsFile) return 1
-        if (!aIsFile && bIsFile) return -1
-        return a.name.localeCompare(b.name)
-      })
-
-      for (const child of children) {
-        if (child.hashid) {
-          result.push({ path: child.path, type: 'file', hashid: child.hashid })
-        } else {
-          result.push({ path: child.path, type: 'dir' })
-          walk(child)
-        }
-      }
-    }
-
-    walk(root)
-    return result
-  }, [treeItems])
+  const leftPaneEntries = useMemo(() => buildKeyboardNavEntries(treeItems), [treeItems])
   const openDirectoryPathSet = useMemo(() => new Set(openDirectoryPaths), [openDirectoryPaths])
   const visibleLeftPaneEntries = useMemo(() => {
     const isVisible = (entryPath: string, type: 'dir' | 'file') => {
