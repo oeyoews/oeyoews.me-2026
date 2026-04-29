@@ -333,6 +333,10 @@
     line-height: 1.75;
   }
 
+  .blog-article-content :where(p) {
+    text-indent: 2em;
+  }
+
   .explorer-heading {
     @apply border-b px-3 py-3 text-[11px] font-semibold uppercase tracking-wide;
     border-color: #2f3750;
