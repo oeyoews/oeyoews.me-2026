@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Streamdown } from 'streamdown'
 import { createCodePlugin } from '@streamdown/code'
@@ -53,6 +53,9 @@ export default function BlogListPage({
   toc = [],
 }: BlogListPageProps) {
   const MOBILE_TREE_ANIMATION_MS = 220
+  const LEFT_SIDEBAR_MIN_WIDTH = 220
+  const LEFT_SIDEBAR_MAX_WIDTH = 520
+  const LEFT_SIDEBAR_DEFAULT_WIDTH = 300
   const navigate = useNavigate()
   const contentRef = useRef<HTMLDivElement>(null)
   const tocClickLockUntilRef = useRef(0)
@@ -61,9 +64,13 @@ export default function BlogListPage({
   const drawerTouchStartYRef = useRef<number | null>(null)
   const mobileTreeCloseTimerRef = useRef<number | null>(null)
   const mobileTreeOpenRafRef = useRef<number | null>(null)
+  const sidebarResizeStartXRef = useRef<number | null>(null)
+  const sidebarResizeStartWidthRef = useRef(LEFT_SIDEBAR_DEFAULT_WIDTH)
   const [showMobileTree, setShowMobileTree] = useState(false)
   const [mobileTreeOpen, setMobileTreeOpen] = useState(false)
   const [sidebarsHidden, setSidebarsHidden] = useState(false)
+  const [leftSidebarWidth, setLeftSidebarWidth] = useState(LEFT_SIDEBAR_DEFAULT_WIDTH)
+  const [isResizingLeftSidebar, setIsResizingLeftSidebar] = useState(false)
   const showToc = Boolean(activePost) && toc.length > 1
   const [activeTocId, setActiveTocId] = useState<string>('')
   const [focusedTocId, setFocusedTocId] = useState<string | undefined>(undefined)
@@ -146,6 +153,10 @@ export default function BlogListPage({
   const currentHashid = activePost?.meta.hashid ?? activeImage?.meta.hashid
   const hasPostContent = Boolean(activePost?.content.trim())
   const tocIds = useMemo(() => toc.map((item) => item.id), [toc])
+  const mainGridStyle = useMemo(
+    () => ({ '--left-sidebar-width': `${leftSidebarWidth}px` }) as CSSProperties,
+    [leftSidebarWidth],
+  )
 
   const openMobileTree = () => {
     if (mobileTreeCloseTimerRef.current !== null) {
@@ -419,6 +430,38 @@ export default function BlogListPage({
   ])
 
   useEffect(() => {
+    if (!isResizingLeftSidebar) return
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (sidebarResizeStartXRef.current === null) return
+      const deltaX = event.clientX - sidebarResizeStartXRef.current
+      const nextWidth = Math.min(
+        LEFT_SIDEBAR_MAX_WIDTH,
+        Math.max(LEFT_SIDEBAR_MIN_WIDTH, sidebarResizeStartWidthRef.current + deltaX),
+      )
+      setLeftSidebarWidth(nextWidth)
+    }
+
+    const stopResize = () => {
+      setIsResizingLeftSidebar(false)
+      sidebarResizeStartXRef.current = null
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+    }
+
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'col-resize'
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', stopResize)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', stopResize)
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+    }
+  }, [isResizingLeftSidebar, LEFT_SIDEBAR_MAX_WIDTH, LEFT_SIDEBAR_MIN_WIDTH])
+
+  useEffect(() => {
     return () => {
       if (mobileTreeCloseTimerRef.current !== null) {
         window.clearTimeout(mobileTreeCloseTimerRef.current)
@@ -426,6 +469,8 @@ export default function BlogListPage({
       if (mobileTreeOpenRafRef.current !== null) {
         window.cancelAnimationFrame(mobileTreeOpenRafRef.current)
       }
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
     }
   }, [])
 
@@ -445,7 +490,7 @@ export default function BlogListPage({
             aria-label="关闭目录"
           />
           <div
-            className={cn('mobile-tree-panel', mobileTreeOpen && 'mobile-tree-panel-open')}
+            className={cn('mobile-tree-panel flex flex-col', mobileTreeOpen && 'mobile-tree-panel-open')}
             onTouchStart={(event) => {
               const touch = event.touches[0]
               drawerTouchStartXRef.current = touch?.clientX ?? null
@@ -469,18 +514,10 @@ export default function BlogListPage({
               drawerTouchStartYRef.current = null
             }}
           >
-            <div className="flex items-center justify-between border-b border-[#2f3750] px-3 py-2">
+            <div className="border-b border-[#2f3750] px-3 py-2">
               <p className="text-sm font-medium text-[#dbe5ff]">目录</p>
-              <button
-                type="button"
-                onClick={closeMobileTree}
-                className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-[#9aa6c5] hover:bg-[#2a3450] hover:text-[#e4eafd]"
-              >
-                <X className="size-3.5 shrink-0" />
-                <span>关闭</span>
-              </button>
             </div>
-            <div className="h-[calc(100%-41px)] overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto pb-16">
               <BlogFileTree
                 items={treeItems}
                 currentHashid={currentHashid}
@@ -491,6 +528,14 @@ export default function BlogListPage({
                 onSelectFile={closeMobileTree}
               />
             </div>
+            <button
+              type="button"
+              onClick={closeMobileTree}
+              className="absolute right-3 bottom-3 inline-flex items-center gap-1 rounded border border-[#33415f] bg-[#222e4a]/95 px-2.5 py-1.5 text-xs text-[#c8d3f0] shadow-sm backdrop-blur hover:bg-[#2a3450] hover:text-[#e4eafd]"
+            >
+              <X className="size-3.5 shrink-0" />
+              <span>关闭</span>
+            </button>
           </div>
         </div>
       ) : null}
@@ -501,6 +546,7 @@ export default function BlogListPage({
           !showToc && !sidebarsHidden && 'main-grid-no-toc',
           sidebarsHidden && 'main-grid-focus-mode',
         )}
+        style={mainGridStyle}
       >
         <div className={cn('blog-side-panel print:hidden', sidebarsHidden && 'blog-side-panel-focus', activePane === 'left' && !sidebarsHidden && 'pane-focused')}>
           <div className="vscode-explorer-shell">
@@ -523,6 +569,24 @@ export default function BlogListPage({
                 onSelectFile={() => setShowMobileTree(false)}
               />
             </div>
+            {!sidebarsHidden ? (
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="调整左侧边栏宽度"
+                className={cn(
+                  'vscode-sidebar-resize-handle',
+                  isResizingLeftSidebar && 'vscode-sidebar-resize-handle-resizing',
+                )}
+                onMouseDown={(event) => {
+                  if (event.button !== 0) return
+                  event.preventDefault()
+                  sidebarResizeStartXRef.current = event.clientX
+                  sidebarResizeStartWidthRef.current = leftSidebarWidth
+                  setIsResizingLeftSidebar(true)
+                }}
+              />
+            ) : null}
           </div>
         </div>
 

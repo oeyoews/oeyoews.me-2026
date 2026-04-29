@@ -124,12 +124,12 @@
   }
 
   .main-grid {
-    @apply grid h-full min-h-0 flex-1 gap-0 overflow-hidden xl:grid-cols-[300px_minmax(0,1fr)_260px];
+    @apply grid h-full min-h-0 flex-1 gap-0 overflow-hidden xl:grid-cols-[var(--left-sidebar-width,300px)_minmax(0,1fr)_260px];
     transition: grid-template-columns 220ms ease;
   }
 
   .main-grid-no-toc {
-    @apply xl:grid-cols-[300px_minmax(0,1fr)];
+    @apply xl:grid-cols-[var(--left-sidebar-width,300px)_minmax(0,1fr)];
   }
 
   .main-grid-focus-mode {
@@ -208,7 +208,30 @@
   }
 
   .vscode-explorer-shell {
-    @apply flex h-full;
+    @apply relative flex h-full;
+  }
+
+  .vscode-sidebar-resize-handle {
+    @apply absolute top-0 right-0 z-20 hidden h-full w-1 cursor-col-resize xl:block;
+    background: transparent;
+  }
+
+  .vscode-sidebar-resize-handle::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    background: #2f3750;
+    opacity: 0.6;
+    transition: opacity 160ms ease, background-color 160ms ease;
+  }
+
+  .vscode-sidebar-resize-handle:hover::after,
+  .vscode-sidebar-resize-handle-resizing::after {
+    opacity: 1;
+    background: #5d76b8;
   }
 
   .vscode-activity-bar {
