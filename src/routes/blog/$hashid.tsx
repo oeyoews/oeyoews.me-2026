@@ -1,4 +1,4 @@
-import { createFileRoute, notFound } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { allPosts, allTreeItems, getImageByHashid, getPostByHashid } from '../../blog/posts'
 import BlogListPage from '../../components/blog-list-page'
 
@@ -60,7 +60,6 @@ export const Route = createFileRoute('/blog/$hashid')({
   loader: ({ params }) => {
     const activePost = getPostByHashid(params.hashid)
     const activeImage = activePost ? undefined : getImageByHashid(params.hashid)
-    if (!activePost && !activeImage) throw notFound()
 
     return {
       posts: allPosts,

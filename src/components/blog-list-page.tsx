@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Streamdown } from 'streamdown'
 import { createCodePlugin } from '@streamdown/code'
 import { createCjkPlugin } from '@streamdown/cjk'
-import { ArrowLeft, ArrowRight, CalendarDays, ListTree, PanelLeftOpen, Quote, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarDays, FileText, ListTree, PanelLeftOpen, Quote, SearchX, X } from 'lucide-react'
 import type { BlogImage, BlogPost, BlogPostMeta, BlogTreeItem } from '../blog/posts'
 import BlogFileTree from './blog-file-tree'
 import VscodeActivityBar from './vscode-activity-bar'
@@ -144,6 +144,7 @@ export default function BlogListPage({
   const prevPost = currentPostIndex > 0 ? posts[currentPostIndex - 1] : undefined
   const nextPost = currentPostIndex >= 0 ? posts[currentPostIndex + 1] : undefined
   const currentHashid = activePost?.meta.hashid ?? activeImage?.meta.hashid
+  const hasPostContent = Boolean(activePost?.content.trim())
   const tocIds = useMemo(() => toc.map((item) => item.id), [toc])
 
   const openMobileTree = () => {
@@ -559,15 +560,22 @@ export default function BlogListPage({
                   ) : null}
                 </header>
 
-                <div
-                  key={activePost.meta.hashid}
-                  ref={contentRef}
-                  className="blog-article-content max-w-none prose-pre:my-0"
-                >
-                  <Streamdown linkSafety={{ enabled: false }} key={activePost.meta.hashid} mode="static" plugins={{ code, cjk }} controls={{ code: { download: false } }}>
-                    {activePost.content}
-                  </Streamdown>
-                </div>
+                {hasPostContent ? (
+                  <div
+                    key={activePost.meta.hashid}
+                    ref={contentRef}
+                    className="blog-article-content max-w-none prose-pre:my-0"
+                  >
+                    <Streamdown linkSafety={{ enabled: false }} key={activePost.meta.hashid} mode="static" plugins={{ code, cjk }} controls={{ code: { download: false } }}>
+                      {activePost.content}
+                    </Streamdown>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-[#2f3750] bg-[#101624] px-4 py-8 text-center text-sm text-[#9aa6c5]">
+                    <FileText className="mx-auto mb-2 size-5 text-[#8f9bbd]" />
+                    当前文章暂无正文内容，可以从左侧目录切换到其他文章。
+                  </div>
+                )}
 
                 <nav className="mt-10 grid gap-3 border-t border-[#2f3750] pt-6 print:hidden sm:grid-cols-2">
                   {prevPost ? (
@@ -647,9 +655,10 @@ export default function BlogListPage({
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground">博客文章</h1>
-                <p className="text-sm text-muted-foreground">暂无可预览文章</p>
+              <div className="flex min-h-[60vh] flex-col items-center justify-center space-y-4 text-center">
+                <SearchX className="size-9 text-[#8f9bbd]" />
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">文章不存在</h1>
+                <p className="text-sm text-muted-foreground">请从左侧目录选择其他文章继续预览</p>
               </div>
             )}
           </div>

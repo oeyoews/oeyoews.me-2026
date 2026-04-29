@@ -1,5 +1,5 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { HeadContent, Link, Scripts, createRootRoute } from '@tanstack/react-router'
+import { SearchX } from 'lucide-react'
 import CommandPalette from '../components/command-palette'
 
 import appCss from '../styles.css?url'
@@ -27,8 +27,22 @@ export const Route = createRootRoute({
       },
     ],
   }),
+  notFoundComponent: RootNotFound,
   shellComponent: RootDocument,
 })
+
+function RootNotFound() {
+  return (
+    <main className="mx-auto flex min-h-[60vh] max-w-3xl flex-col items-center justify-center gap-3 px-6 text-center">
+      <SearchX className="size-9 text-[#8f9bbd]" />
+      <h1 className="text-2xl font-semibold">页面不存在</h1>
+      <p className="opacity-80">你访问的页面不存在或已被移动。</p>
+      <Link to="/" className="underline underline-offset-4">
+        返回首页
+      </Link>
+    </main>
+  )
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
@@ -42,50 +56,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <div className="flex-1 overflow-hidden">{children}</div>
         </div>
         <CommandPalette />
-        <ClientOnlyDevtools />
         <Scripts />
       </body>
     </html>
   )
-}
-
-function ClientOnlyDevtools() {
-  const [devtools, setDevtools] = useState<React.ReactNode>(null)
-
-  useEffect(() => {
-    if (!import.meta.env.DEV) return
-
-    let mounted = true
-
-    async function loadDevtools() {
-      const [{ TanStackDevtools }, { TanStackRouterDevtoolsPanel }] = await Promise.all([
-        import('@tanstack/react-devtools'),
-        import('@tanstack/react-router-devtools'),
-      ])
-
-      if (!mounted) return
-
-      setDevtools(
-        <TanStackDevtools
-          config={{
-            position: 'bottom-right',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />,
-      )
-    }
-
-    void loadDevtools()
-
-    return () => {
-      mounted = false
-    }
-  }, [])
-
-  return <>{devtools}</>
 }
