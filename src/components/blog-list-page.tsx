@@ -38,6 +38,25 @@ function createKeyboardNavNode(name: string, path = ''): KeyboardNavNode {
   }
 }
 
+function toLabel(name: string) {
+  return name.replace(/[-_]/g, ' ')
+}
+
+function getPostFallbackTitle(treePath: string) {
+  const parts = treePath.split('/').filter(Boolean)
+  const last = parts.at(-1) ?? treePath
+  if (last.toLowerCase() === 'index') {
+    const parent = parts.at(-2)
+    return parent ? toLabel(parent) : toLabel(last)
+  }
+  return toLabel(last)
+}
+
+function getPostDisplayTitle(post: BlogPostMeta) {
+  const title = post.title?.trim()
+  return title ? title : getPostFallbackTitle(post.treePath)
+}
+
 function compareKeyboardNavNodes(a: KeyboardNavNode, b: KeyboardNavNode) {
   const aIsIndex = a.name.toLowerCase() === 'index'
   const bIsIndex = b.name.toLowerCase() === 'index'
@@ -235,11 +254,22 @@ export default function BlogListPage({
 
     return leftPaneEntries.filter((entry) => isVisible(entry.path, entry.type))
   }, [leftPaneEntries, openDirectoryPathSet])
+  const orderedPostsByTree = useMemo(() => {
+    const postByHashid = new Map(posts.map((post) => [post.hashid, post] as const))
+    return leftPaneEntries
+      .filter((entry) => entry.type === 'file' && entry.hashid)
+      .map((entry) => postByHashid.get(entry.hashid!))
+      .filter((item): item is BlogPostMeta => Boolean(item))
+  }, [leftPaneEntries, posts])
+
   const currentPostIndex = activePost
-    ? posts.findIndex((item) => item.hashid === activePost.meta.hashid)
+    ? orderedPostsByTree.findIndex((item) => item.hashid === activePost.meta.hashid)
     : -1
-  const prevPost = currentPostIndex > 0 ? posts[currentPostIndex - 1] : undefined
-  const nextPost = currentPostIndex >= 0 ? posts[currentPostIndex + 1] : undefined
+  const prevPost = currentPostIndex > 0 ? orderedPostsByTree[currentPostIndex - 1] : undefined
+  const nextPost =
+    currentPostIndex >= 0 && currentPostIndex < orderedPostsByTree.length - 1
+      ? orderedPostsByTree[currentPostIndex + 1]
+      : undefined
   const currentHashid = activePost?.meta.hashid ?? activeImage?.meta.hashid
   const hasPostContent = Boolean(activePost?.content.trim())
   const tocIds = useMemo(() => toc.map((item) => item.id), [toc])
@@ -1024,7 +1054,7 @@ export default function BlogListPage({
                   </div>
                 )}
 
-                <nav className="mt-10 grid gap-3 border-t border-border pt-6 sm:grid-cols-2">
+                <nav className="mt-10 grid auto-rows-fr gap-3 border-t border-border pt-6 sm:grid-cols-2">
                   {prevPost ? (
                     <button
                       type="button"
@@ -1034,18 +1064,16 @@ export default function BlogListPage({
                           params: { hashid: prevPost.hashid },
                         })
                       }
-                      className="cursor-pointer rounded-lg border border-border bg-card px-4 py-3 text-left text-sm text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
+                      className="flex h-full cursor-pointer flex-col rounded-lg border border-border bg-card px-4 py-3 text-left text-sm text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
                     >
                       <span className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <ArrowLeft className="size-3.5 shrink-0" />
                         <span>上一篇</span>
                       </span>
-                      {prevPost.title ? (
-                        <span className="line-clamp-2 block">{prevPost.title}</span>
-                      ) : null}
+                      <span className="line-clamp-2 block">{getPostDisplayTitle(prevPost)}</span>
                     </button>
                   ) : (
-                    <div className="rounded-lg border border-dashed border-border bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
+                    <div className="flex h-full flex-col rounded-lg border border-dashed border-border bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
                       <span className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <ArrowLeft className="size-3.5 shrink-0 opacity-80" />
                         <span>上一篇</span>
@@ -1063,18 +1091,16 @@ export default function BlogListPage({
                           params: { hashid: nextPost.hashid },
                         })
                       }
-                      className="cursor-pointer rounded-lg border border-border bg-card px-4 py-3 text-right text-sm text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
+                      className="flex h-full cursor-pointer flex-col items-end rounded-lg border border-border bg-card px-4 py-3 text-right text-sm text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
                     >
                       <span className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <span>下一篇</span>
                         <ArrowRight className="size-3.5 shrink-0" />
                       </span>
-                      {nextPost.title ? (
-                        <span className="line-clamp-2 block">{nextPost.title}</span>
-                      ) : null}
+                      <span className="line-clamp-2 block">{getPostDisplayTitle(nextPost)}</span>
                     </button>
                   ) : (
-                    <div className="rounded-lg border border-dashed border-border bg-muted/60 px-4 py-3 text-right text-sm text-muted-foreground">
+                    <div className="flex h-full flex-col items-end rounded-lg border border-dashed border-border bg-muted/60 px-4 py-3 text-right text-sm text-muted-foreground">
                       <span className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <span>下一篇</span>
                         <ArrowRight className="size-3.5 shrink-0 opacity-80" />
