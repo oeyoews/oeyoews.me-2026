@@ -1008,7 +1008,7 @@ export default function BlogListPage({
             </div>
           ) : null}
           <div className="blog-main-inner">
-            <div className="mb-4 flex justify-end xl:hidden">
+            <div className="fixed bottom-4 left-4 z-30 xl:hidden">
               <button
                 type="button"
                 onClick={openMobileTree}
