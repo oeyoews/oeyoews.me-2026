@@ -12,9 +12,19 @@ const config = defineConfig({
   plugins: [
     // devtools(),
     tailwindcss(),
-    tanstackStart(),
+    // tanstackStart(),
+    tanstackStart({
+      spa: {
+        enabled: true,
+        prerender: {
+          enabled: true,
+          crawlLinks: true,
+        },
+      },
+    }),
     viteReact(),
-    nitro({ preset: 'vercel', })],
+    // nitro({ preset: 'vercel', })
+    ],
 })
 
 export default config
