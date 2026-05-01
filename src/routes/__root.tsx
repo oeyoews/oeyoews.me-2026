@@ -4,11 +4,24 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import CommandPalette from '../components/command-palette'
 import { clearAuthed, isAuthed, setAuthed, verifyPassword } from '../lib/auth'
+import { withBaseUrl } from '../lib/base-url'
 
 import appCss from '../styles.css?url'
 
 const THEME_INIT_SCRIPT = `(function(){try{var root=document.documentElement;var path=window.location&&window.location.pathname?window.location.pathname:'';var isShare=/^\\/s\\//.test(path);root.classList.remove('light','dark');if(!isShare){root.classList.add('dark');root.setAttribute('data-theme','dark');root.style.colorScheme='dark';return;}var stored=window.localStorage.getItem('share-theme');var mode=stored==='light'||stored==='dark'?stored:'dark';root.classList.add(mode);root.setAttribute('data-theme',mode);root.style.colorScheme=mode;}catch(e){}})();`
 const LOGOUT_EVENT = 'app-logout'
+
+const PUBLIC_IMAGE_PRELOAD_LINKS = [
+  'default_folder_opened.svg',
+  'default_folder.svg',
+  'file_type_image.svg',
+  'file_type_markdown.svg',
+  // 'favicon.png',
+].map((file) => ({
+  rel: 'preload',
+  as: 'image',
+  href: withBaseUrl(file),
+}))
 
 export const Route = createRootRoute({
   head: () => ({
@@ -21,7 +34,7 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'TanStack Start Starter',
+        title: 'oeyoews.me',
       },
     ],
     links: [
@@ -29,6 +42,7 @@ export const Route = createRootRoute({
         rel: 'stylesheet',
         href: appCss,
       },
+      ...PUBLIC_IMAGE_PRELOAD_LINKS,
     ],
   }),
   notFoundComponent: RootNotFound,

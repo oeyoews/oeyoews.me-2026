@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { blogUiConfig } from '@/blog/config'
+import { withBaseUrl } from '@/lib/base-url'
 import { cn } from '@/lib/utils'
 
 type BlogFileTreeProps = {
@@ -47,12 +48,6 @@ function getFileExtension(path: string) {
 
 function isImageExtension(extension?: string) {
   return Boolean(extension && ['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg'].includes(extension))
-}
-
-function withBaseUrl(path: string) {
-  const base = import.meta.env.BASE_URL || '/'
-  const normalizedBase = base.endsWith('/') ? base : `${base}/`
-  return `${normalizedBase}${path.replace(/^\/+/, '')}`
 }
 
 function getFileIconSrc(extension?: string) {
