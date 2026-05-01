@@ -210,6 +210,7 @@ export default function BlogListPage({
   const LEFT_SIDEBAR_DEFAULT_WIDTH = 300
   const navigate = useNavigate()
   const contentRef = useRef<HTMLDivElement>(null)
+  const mainScrollRef = useRef<HTMLElement | null>(null)
   const tocClickLockUntilRef = useRef(0)
   const pendingGUntilRef = useRef(0)
   const drawerTouchStartXRef = useRef<number | null>(null)
@@ -516,6 +517,19 @@ export default function BlogListPage({
     const currentItem = treeItems.find((item) => item.hashid === currentHashid)
     if (currentItem) setFocusedTreePath(currentItem.treePath)
   }, [currentHashid, treeItems])
+
+  useEffect(() => {
+    if (!currentHashid) return
+
+    // Route param changes can reuse the same view; reset scroll to avoid mid-page leftovers on mobile.
+    const container = mainScrollRef.current
+    if (container) {
+      container.scrollTo({ top: 0, behavior: 'auto' })
+    }
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'auto' })
+    }
+  }, [currentHashid])
 
   useEffect(() => {
     if (!focusedTreePath) return
@@ -849,7 +863,12 @@ export default function BlogListPage({
         </div>
 
         <div className={cn('blog-content-columns', (!showToc || sidebarsHidden) && 'blog-content-columns-no-toc')}>
-        <section className="blog-col-main">
+        <section
+          className="blog-col-main"
+          ref={(node) => {
+            mainScrollRef.current = node
+          }}
+        >
           {activePost ? (
             <div
               className={cn(

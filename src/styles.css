@@ -395,6 +395,10 @@
     @apply mx-auto w-full max-w-[1100px];
   }
 
+  .blog-content-fade-enter {
+    animation: blog-content-fade-in 200ms ease-out;
+  }
+
   .blog-article-content pre {
     max-width: 100%;
     overflow-x: auto;
@@ -630,5 +634,23 @@
 
   .command-palette-list {
     scrollbar-gutter: stable;
+  }
+}
+
+@keyframes blog-content-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blog-content-fade-enter {
+    animation: none;
   }
 }
