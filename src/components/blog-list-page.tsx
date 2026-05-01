@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Streamdown } from 'streamdown'
 import { createCodePlugin } from '@streamdown/code'
@@ -238,6 +238,7 @@ export default function BlogListPage({
   const [shareStreamEnabled, setShareStreamEnabled] = useState(true)
   const shareResetTimerRef = useRef<number | null>(null)
   const shareMenuRef = useRef<HTMLDivElement>(null)
+  const prevBlogHashidRef = useRef<string | undefined>(undefined)
   const leftPaneEntries = useMemo(() => buildKeyboardNavEntries(treeItems), [treeItems])
   const openDirectoryPathSet = useMemo(() => new Set(openDirectoryPaths), [openDirectoryPaths])
   const visibleLeftPaneEntries = useMemo(() => {
@@ -273,6 +274,19 @@ export default function BlogListPage({
   const currentHashid = activePost?.meta.hashid ?? activeImage?.meta.hashid
   const hasPostContent = Boolean(activePost?.content.trim())
   const tocIds = useMemo(() => toc.map((item) => item.id), [toc])
+
+  useLayoutEffect(() => {
+    if (!currentHashid) return
+    const prev = prevBlogHashidRef.current
+    prevBlogHashidRef.current = currentHashid
+    if (prev === undefined || prev === currentHashid) return
+    const scroller = document.querySelector('.blog-col-main')
+    if (!(scroller instanceof HTMLElement)) return
+    scroller.scrollTop = 0
+    requestAnimationFrame(() => {
+      scroller.scrollTop = 0
+    })
+  }, [currentHashid])
   const mainGridStyle = useMemo(
     () => ({ '--left-sidebar-width': `${leftSidebarWidth}px` }) as CSSProperties,
     [leftSidebarWidth],
@@ -1019,7 +1033,7 @@ export default function BlogListPage({
                 <span className="sr-only">打开目录树</span>
               </button>
             </div>
-            <div key={currentHashid ?? 'empty'} className="blog-content-fade-enter">
+            <div key={currentHashid ?? 'empty'} className="isolate blog-content-fade-enter">
               {activePost ? (
                 <>
                 <header className="mb-6">
@@ -1054,7 +1068,7 @@ export default function BlogListPage({
                   </div>
                 )}
 
-                <nav className="mt-10 grid auto-rows-fr gap-3 border-t border-border pt-6 sm:grid-cols-2">
+                <nav className="relative z-10 mt-10 grid auto-rows-fr gap-3 border-t border-border bg-card pt-6 sm:grid-cols-2">
                   {prevPost ? (
                     <button
                       type="button"
