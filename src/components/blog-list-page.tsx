@@ -1008,17 +1008,6 @@ export default function BlogListPage({
             </div>
           ) : null}
           <div className="blog-main-inner">
-            <div className="fixed bottom-4 left-4 z-30 xl:hidden">
-              <button
-                type="button"
-                onClick={openMobileTree}
-                aria-label="打开目录树"
-                className="inline-flex size-9 items-center justify-center rounded border border-border bg-card text-foreground hover:bg-muted"
-              >
-                <PanelLeftOpen className="size-4 shrink-0" />
-                <span className="sr-only">打开目录树</span>
-              </button>
-            </div>
             <div key={currentHashid ?? 'empty'} className="blog-content-fade-enter">
               {activePost ? (
                 <>
@@ -1176,6 +1165,17 @@ export default function BlogListPage({
           </aside>
         ) : null}
         </div>
+      </div>
+      <div className="fixed bottom-4 left-4 z-30 xl:hidden">
+        <button
+          type="button"
+          onClick={openMobileTree}
+          aria-label="打开目录树"
+          className="inline-flex size-9 items-center justify-center rounded border border-border bg-card text-foreground shadow-sm hover:bg-muted"
+        >
+          <PanelLeftOpen className="size-4 shrink-0" />
+          <span className="sr-only">打开目录树</span>
+        </button>
       </div>
     </main>
   )
