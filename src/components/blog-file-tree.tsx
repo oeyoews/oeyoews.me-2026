@@ -49,9 +49,15 @@ function isImageExtension(extension?: string) {
   return Boolean(extension && ['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg'].includes(extension))
 }
 
+function withBaseUrl(path: string) {
+  const base = import.meta.env.BASE_URL || '/'
+  const normalizedBase = base.endsWith('/') ? base : `${base}/`
+  return `${normalizedBase}${path.replace(/^\/+/, '')}`
+}
+
 function getFileIconSrc(extension?: string) {
-  if (isImageExtension(extension)) return '/file_type_image.svg'
-  return '/file_type_markdown.svg'
+  if (isImageExtension(extension)) return withBaseUrl('/file_type_image.svg')
+  return withBaseUrl('/file_type_markdown.svg')
 }
 
 function buildTree(items: Array<{ hashid: string; treePath: string; sourcePath: string }>) {
@@ -219,7 +225,7 @@ function NodeItem({
           className={cn('size-4 shrink-0 transition-transform', open && 'rotate-90')}
         />
         <img
-          src={open ? '/default_folder_opened.svg' : '/default_folder.svg'}
+          src={open ? withBaseUrl('/default_folder_opened.svg') : withBaseUrl('/default_folder.svg')}
           alt=""
           aria-hidden="true"
           className="size-4 shrink-0"
