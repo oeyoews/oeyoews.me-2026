@@ -194,10 +194,6 @@
     @apply h-dvh min-w-0 overflow-y-auto px-5 pt-2 pb-5 xl:h-auto xl:overflow-visible xl:border-l xl:px-6;
     background: var(--color-card);
     border-color: var(--color-border);
-    contain: layout paint;
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-    backface-visibility: hidden;
   }
 
   .blog-col-main-centered {
