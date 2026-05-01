@@ -8,7 +8,6 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "build": "vite build",
-    "postbuild": "node -e \"const fs=require('node:fs');const src='dist/client/_shell.html';const dest='dist/client/index.html';if(fs.existsSync(src))fs.copyFileSync(src,dest)\"",
     "preview": "vite preview",
     "preview:static": "bunx serve dist/client",
     "test": "vitest run"
