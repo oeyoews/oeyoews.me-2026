@@ -4,7 +4,14 @@ import {
   Monitor,
   Sparkles,
 } from 'lucide-react'
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type Dispatch,
+  type SetStateAction,
+} from 'react'
 import { blogUiConfig } from '@/blog/config'
 import { withBaseUrl } from '@/lib/base-url'
 import { cn } from '@/lib/utils'
@@ -134,6 +141,7 @@ function NodeItem({
   setOpenPaths,
   onSelectFile,
   path = '',
+  depth = 0,
 }: {
   node: TreeNode
   currentHashid?: string
@@ -143,6 +151,7 @@ function NodeItem({
   setOpenPaths: Dispatch<SetStateAction<Set<string>>>
   onSelectFile?: () => void
   path?: string
+  depth?: number
 }) {
   const isFile = Boolean(node.hashid)
   const children = Array.from(node.children.values()).sort(compareTreeNodes)
@@ -153,14 +162,17 @@ function NodeItem({
   if (isFile && node.hashid) {
     const isActive = currentHashid === node.hashid
     const isFocused = focusedHashid === node.hashid
+    const stickyStyle = { '--explorer-sticky-depth': depth } as CSSProperties
+
     return (
       <li>
         <Link
           to="/blog/$hashid"
           params={{ hashid: node.hashid }}
           onClick={onSelectFile}
+          style={stickyStyle}
           className={cn(
-            'explorer-row',
+            'explorer-row explorer-row-sticky',
             isActive ? 'explorer-row-active font-medium' : 'explorer-row-muted',
             isFocused && !isActive && 'explorer-row-focused',
             isFocusedPath && !isActive && 'explorer-row-focused',
@@ -181,11 +193,13 @@ function NodeItem({
   }
 
   const open = openPaths.has(nodePath)
+  const stickyStyle = { '--explorer-sticky-depth': depth } as CSSProperties
 
   return (
     <li>
       <button
         type="button"
+        style={stickyStyle}
         onClick={() =>
           setOpenPaths((prev) => {
             const next = new Set(prev)
@@ -195,7 +209,7 @@ function NodeItem({
           })
         }
         className={cn(
-          'explorer-row explorer-row-muted group w-full text-left',
+          'explorer-row explorer-row-sticky explorer-row-muted group w-full text-left',
           isFocusedPath && 'explorer-row-focused',
         )}
       >
@@ -223,6 +237,7 @@ function NodeItem({
                 focusedHashid={focusedHashid}
                 focusedTreePath={focusedTreePath}
                 path={nodePath}
+                depth={depth + 1}
                 openPaths={openPaths}
                 setOpenPaths={setOpenPaths}
                 onSelectFile={onSelectFile}
@@ -285,21 +300,24 @@ export default function BlogFileTree({
           <span>{blogUiConfig.explorerVersion}</span>
         </span>
       </p>
-      <ul className="explorer-tree-list min-h-0 flex-1 overflow-y-auto">
-        {topLevelNodes.map((node) => (
-          <NodeItem
-            key={node.name}
-            node={node}
-            currentHashid={currentHashid}
-            focusedHashid={focusedHashid}
-            focusedTreePath={focusedTreePath}
-            path=""
-            openPaths={openPaths}
-            setOpenPaths={setOpenPaths}
-            onSelectFile={onSelectFile}
-          />
-        ))}
-      </ul>
+      {/* 滚动放在 div 上：ul+flex+overflow 在部分环境下会破坏 position:sticky */}
+      <div className="explorer-tree-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain">
+        <ul className="explorer-tree-list">
+          {topLevelNodes.map((node) => (
+            <NodeItem
+              key={node.name}
+              node={node}
+              currentHashid={currentHashid}
+              focusedHashid={focusedHashid}
+              focusedTreePath={focusedTreePath}
+              path=""
+              openPaths={openPaths}
+              setOpenPaths={setOpenPaths}
+              onSelectFile={onSelectFile}
+            />
+          ))}
+        </ul>
+      </div>
     </aside>
   )
 }

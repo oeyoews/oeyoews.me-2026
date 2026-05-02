@@ -177,6 +177,7 @@
 
   .main-grid > * {
     min-width: 0;
+    min-height: 0;
   }
 
   .blog-content-columns {
@@ -242,7 +243,10 @@
   }
 
   .blog-side-panel {
-    @apply hidden xl:block xl:h-full xl:overflow-hidden;
+    @apply hidden min-h-0 xl:block xl:h-full;
+    /* 勿用 overflow-y:hidden，否则会阻断子树内 position:sticky（仅裁切横向即可） */
+    overflow-x: clip;
+    overflow-y: visible;
     background: var(--color-card);
   }
 
@@ -257,12 +261,13 @@
   } */
 
   .vscode-explorer-shell {
-    @apply relative flex h-full;
+    @apply relative flex h-full min-h-0;
     user-select: none;
   }
 
   .vscode-sidebar-resize-handle {
-    @apply absolute top-0 right-0 z-20 hidden h-full w-1 cursor-col-resize xl:block;
+    /* 高于目录内 sticky 行，避免深层 z-index 盖住拖拽条 */
+    @apply absolute top-0 right-0 z-[60] hidden h-full w-1 cursor-col-resize xl:block;
     background: transparent;
   }
 
@@ -312,8 +317,10 @@
   }
 
   .vscode-explorer-content {
-    @apply min-w-0 flex-1 overflow-hidden;
+    @apply min-h-0 min-w-0 flex-1;
     width: 252px;
+    overflow-x: clip;
+    overflow-y: visible;
     opacity: 1;
     transition: width 220ms ease, opacity 160ms ease;
   }
@@ -515,8 +522,44 @@
     background: #212a3d;
   }
 
+  .explorer-tree-scroll {
+    /* 与 .explorer-row-sticky 的槽位一致，保证多层 sticky 垂直对齐 */
+    --explorer-sticky-row-height: 2.125rem;
+    /* 与侧栏 card 一致，粘性行用同一变量避免「发灰一块」 */
+    --explorer-sticky-surface: var(--color-card);
+    position: relative;
+    z-index: 0;
+    background: var(--explorer-sticky-surface);
+  }
+
+  .blog-side-panel-focus .explorer-tree-scroll {
+    --explorer-sticky-surface: var(--color-secondary);
+  }
+
   .explorer-tree-list {
     @apply space-y-0 px-1 py-1;
+  }
+
+  /* VS Code–style sticky path: ancestor rows stay可见；浅层 z-index 更高，行高误差重叠时仍像面包屑自上而下 */
+  .explorer-row-sticky {
+    position: sticky;
+    top: calc(var(--explorer-sticky-depth, 0) * var(--explorer-sticky-row-height));
+    z-index: calc(50 - min(var(--explorer-sticky-depth, 0), 24));
+    min-height: var(--explorer-sticky-row-height);
+    box-sizing: border-box;
+    background: var(--explorer-sticky-surface);
+  }
+
+  .explorer-row-sticky.explorer-row-muted:hover {
+    background: color-mix(in srgb, var(--color-foreground) 6%, var(--explorer-sticky-surface));
+  }
+
+  .explorer-row-sticky.explorer-row-focused {
+    background: color-mix(in srgb, var(--color-foreground) 9%, var(--explorer-sticky-surface));
+  }
+
+  .explorer-row-sticky.explorer-row-active {
+    background: color-mix(in srgb, var(--color-accent) 32%, var(--explorer-sticky-surface));
   }
 
   .explorer-row {
