@@ -29,7 +29,6 @@ type BlogFileTreeProps = {
 type TreeNode = {
   name: string
   hashid?: string
-  extension?: string
   children: Map<string, TreeNode>
 }
 
@@ -38,21 +37,6 @@ function createNode(name: string): TreeNode {
     name,
     children: new Map(),
   }
-}
-
-function getFileExtension(path: string) {
-  const filename = path.split('/').pop() ?? path
-  const match = filename.match(/\.([a-z0-9]+)$/i)
-  return match ? match[1].toLowerCase() : undefined
-}
-
-function isImageExtension(extension?: string) {
-  return Boolean(extension && ['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg'].includes(extension))
-}
-
-function getFileIconSrc(extension?: string) {
-  if (isImageExtension(extension)) return withBaseUrl('/file_type_image.svg')
-  return withBaseUrl('/file_type_markdown.svg')
 }
 
 function buildTree(items: Array<{ hashid: string; treePath: string; sourcePath: string }>) {
@@ -73,7 +57,6 @@ function buildTree(items: Array<{ hashid: string; treePath: string; sourcePath: 
       }
       if (isFile) {
         next.hashid = item.hashid
-        next.extension = getFileExtension(item.sourcePath)
       }
       cursor = next
     }
@@ -184,7 +167,7 @@ function NodeItem({
           )}
         >
           <img
-            src={getFileIconSrc(node.extension)}
+            src={withBaseUrl('/file_type_markdown.svg')}
             alt=""
             aria-hidden="true"
             className="size-4 shrink-0"

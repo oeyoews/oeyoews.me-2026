@@ -14,7 +14,7 @@ const LOGOUT_EVENT = 'app-logout'
 const PUBLIC_IMAGE_PRELOAD_LINKS = [
   'default_folder_opened.svg',
   'default_folder.svg',
-  'file_type_image.svg',
+  // 'file_type_image.svg',
   'file_type_markdown.svg',
   // 'favicon.png',
 ].map((file) => ({

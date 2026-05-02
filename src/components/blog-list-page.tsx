@@ -4,7 +4,7 @@ import { Streamdown } from 'streamdown'
 import { createCodePlugin } from '@streamdown/code'
 import { createCjkPlugin } from '@streamdown/cjk'
 import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, Copy, Download, ExternalLink, FileText, Link2, ListTree, Lock, PanelLeftOpen, Quote, SearchX, X } from 'lucide-react'
-import type { BlogImage, BlogPost, BlogPostMeta, BlogTreeItem } from '../blog/posts'
+import type { BlogPost, BlogPostMeta, BlogTreeItem } from '../blog/posts'
 import { encodeShareToken } from '../blog/share-id'
 import BlogFileTree from './blog-file-tree'
 import VscodeActivityBar from './vscode-activity-bar'
@@ -15,7 +15,6 @@ type BlogListPageProps = {
   posts: BlogPostMeta[]
   treeItems: BlogTreeItem[]
   activePost?: BlogPost
-  activeImage?: BlogImage
   toc?: Array<{ level: 2 | 3; text: string; id: string }>
 }
 
@@ -202,7 +201,6 @@ export default function BlogListPage({
   posts,
   treeItems,
   activePost,
-  activeImage,
   toc = [],
 }: BlogListPageProps) {
   const MOBILE_TREE_ANIMATION_MS = 220
@@ -272,7 +270,7 @@ export default function BlogListPage({
     currentPostIndex >= 0 && currentPostIndex < orderedPostsByTree.length - 1
       ? orderedPostsByTree[currentPostIndex + 1]
       : undefined
-  const currentHashid = activePost?.meta.hashid ?? activeImage?.meta.hashid
+  const currentHashid = activePost?.meta.hashid
   const hasPostContent = Boolean(activePost?.content.trim())
   const tocIds = useMemo(() => toc.map((item) => item.id), [toc])
   const mainGridStyle = useMemo(
@@ -1119,23 +1117,6 @@ export default function BlogListPage({
                   )}
                 </nav>
                 </>
-              ) : activeImage ? (
-                <div className="space-y-4">
-                <header>
-                  <h1 className="m-0 text-[24px] leading-[1.2] font-semibold tracking-tight text-foreground">
-                    {activeImage.meta.title}
-                  </h1>
-                  <p className="mt-3 text-[12px] text-muted-foreground">{activeImage.meta.sourcePath}</p>
-                </header>
-                <div className="overflow-hidden rounded-lg border border-border bg-background p-2">
-                  <img
-                    src={activeImage.imageUrl}
-                    alt={activeImage.meta.title}
-                    className="mx-auto block max-h-[75dvh] w-auto max-w-full rounded"
-                    loading="lazy"
-                  />
-                </div>
-                </div>
               ) : (
                 <div className="flex min-h-[60vh] flex-col items-center justify-center space-y-4 text-center">
                 <SearchX className="size-9 text-muted-foreground" />

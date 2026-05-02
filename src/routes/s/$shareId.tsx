@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 import { decodeShareToken, verifySharePassword } from '../../blog/share-id'
-import { getImageByHashid, getPostByHashid } from '../../blog/posts'
+import { getPostByHashid } from '../../blog/posts'
 import BlogReadonlyView from '../../components/blog-readonly-view'
 
 type ShareSearch = {
@@ -15,16 +15,15 @@ export const Route = createFileRoute('/s/$shareId')({
   loader: ({ params }) => {
     const { hashid, passwordDigest } = decodeShareToken(params.shareId)
     if (!hashid) {
-      return { post: undefined, image: undefined, passwordDigest: undefined }
+      return { post: undefined, passwordDigest: undefined }
     }
 
     const post = getPostByHashid(hashid)
-    const image = post ? undefined : getImageByHashid(hashid)
-    return { post, image, passwordDigest }
+    return { post, passwordDigest }
   },
   head: ({ loaderData }) => {
     if (!loaderData) return {}
-    const title = loaderData.post?.meta.title || loaderData.image?.meta.title || 'Share'
+    const title = loaderData.post?.meta.title || 'Share'
     const description = loaderData.post?.meta.description
     return {
       meta: [
@@ -38,7 +37,7 @@ export const Route = createFileRoute('/s/$shareId')({
 
 function ShareReadonlyPage() {
   const { stream: streamParam } = Route.useSearch()
-  const { post, image, passwordDigest } = Route.useLoaderData()
+  const { post, passwordDigest } = Route.useLoaderData()
   const [inputPassword, setInputPassword] = useState('')
   const [authed, setAuthed] = useState(false)
   const [error, setError] = useState('')
@@ -87,6 +86,6 @@ function ShareReadonlyPage() {
     )
   }
 
-  return <BlogReadonlyView post={post} image={image} stream={streamEnabled} />
+  return <BlogReadonlyView post={post} stream={streamEnabled} />
 }
 

@@ -14,18 +14,6 @@ export type BlogPost = {
   content: string
 }
 
-export type BlogImageMeta = {
-  title: string
-  hashid: string
-  treePath: string
-  sourcePath: string
-}
-
-export type BlogImage = {
-  meta: BlogImageMeta
-  imageUrl: string
-}
-
 export type BlogTreeItem = {
   hashid: string
   treePath: string
@@ -144,6 +132,42 @@ function parseFrontmatter(raw: string): FrontmatterParseResult {
   }
 }
 
+/** Resolve ./foo.png or foo.png in markdown relative to the .md file under content/. */
+function resolveMarkdownImageRef(mdSourcePath: string, ref: string): string | null {
+  const trimmed = ref.trim()
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('//') || trimmed.startsWith('data:'))
+    return null
+  if (trimmed.startsWith('/')) return null
+
+  const baseDir = mdSourcePath.includes('/')
+    ? mdSourcePath.slice(0, mdSourcePath.lastIndexOf('/'))
+    : ''
+  const pathPart = trimmed.replace(/^\.\//, '').split(/[#?]/)[0]
+  if (!pathPart) return null
+  const resolved = baseDir ? `${baseDir}/${pathPart}` : pathPart
+  return resolved.replace(/\/{2,}/g, '/')
+}
+
+/** Rewrite ![](relative) to Vite-resolved asset URLs for files under content/. */
+function rewriteLocalImageUrls(
+  markdown: string,
+  mdSourcePath: string,
+  urlBySourcePath: Map<string, string>,
+): string {
+  return markdown.replace(/!\[([^\]]*)\]\(\s*([^)]+)\s*\)/g, (whole, alt, inner) => {
+    const trimmed = inner.trim()
+    const quotedTitle = trimmed.match(/^(\S+)\s+["']([^"']*)["']\s*$/)
+    const rawUrl = quotedTitle?.[1] ?? trimmed.split(/\s+/)[0]
+    const title = quotedTitle?.[2]
+    const resolved = resolveMarkdownImageRef(mdSourcePath, rawUrl)
+    if (!resolved) return whole
+    const built = urlBySourcePath.get(resolved)
+    if (!built) return whole
+    const titleSuffix = title !== undefined ? ` "${title.replace(/"/g, '\\"')}"` : ''
+    return `![${alt}](${built}${titleSuffix})`
+  })
+}
+
 // Vite requires literal patterns in import.meta.glob.
 const rawPosts = import.meta.glob('../../content/**/*.md', {
   eager: true,
@@ -155,6 +179,11 @@ const rawImages = import.meta.glob('../../content/**/*.{png,jpg,jpeg,gif,webp,av
   eager: true,
   import: 'default',
 }) as Record<string, string>
+
+const imageUrlBySourcePath = new Map<string, string>()
+for (const [path, imageUrl] of Object.entries(rawImages)) {
+  imageUrlBySourcePath.set(toRelativeContentPath(path), imageUrl)
+}
 
 const parsedPosts = Object.entries(rawPosts).map(([path, raw]) => {
   const relativeContentPath = toRelativeContentPath(path)
@@ -186,33 +215,14 @@ const parsedPosts = Object.entries(rawPosts).map(([path, raw]) => {
     treePath,
     sourcePath: relativeContentPath,
   }
-  const content = fm.content.trim()
+  const content = rewriteLocalImageUrls(fm.content.trim(), relativeContentPath, imageUrlBySourcePath)
 
   return { meta, content } satisfies BlogPost
 }).filter((item): item is BlogPost => Boolean(item))
 
-const parsedImages = Object.entries(rawImages).map(([path, imageUrl]) => {
-  const relativeContentPath = toRelativeContentPath(path)
-
-  const treePath = toBlogTreePath(relativeContentPath)
-  const hashid = createHashIdFromPath(relativeContentPath)
-  const filename = treePath.split('/').pop() ?? treePath
-  const title = filename.replace(/\.[^.]+$/, '')
-
-  return {
-    meta: {
-      title,
-      hashid,
-      treePath,
-      sourcePath: relativeContentPath,
-    },
-    imageUrl,
-  } satisfies BlogImage
-}).filter((item): item is BlogImage => Boolean(item))
-
 export const allPosts: BlogPostMeta[] = parsedPosts.map((p) => p.meta).sort(compareByDateDesc)
 
-export const allTreeItems: BlogTreeItem[] = [...parsedPosts.map((p) => p.meta), ...parsedImages.map((i) => i.meta)]
+export const allTreeItems: BlogTreeItem[] = [...parsedPosts.map((p) => p.meta)]
   .sort((a, b) => {
     if (isEntryItem(a.sourcePath) !== isEntryItem(b.sourcePath)) {
       return isEntryItem(a.sourcePath) ? -1 : 1
@@ -227,9 +237,5 @@ export const allTreeItems: BlogTreeItem[] = [...parsedPosts.map((p) => p.meta), 
 
 export function getPostByHashid(hashid: string): BlogPost | undefined {
   return parsedPosts.find((p) => p.meta.hashid === hashid)
-}
-
-export function getImageByHashid(hashid: string): BlogImage | undefined {
-  return parsedImages.find((image) => image.meta.hashid === hashid)
 }
 

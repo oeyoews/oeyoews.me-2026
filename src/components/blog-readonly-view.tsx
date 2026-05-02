@@ -3,7 +3,7 @@ import { createCodePlugin } from '@streamdown/code'
 import { createCjkPlugin } from '@streamdown/cjk'
 import { CalendarDays, Quote, SearchX } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import type { BlogImage, BlogPost } from '../blog/posts'
+import type { BlogPost } from '../blog/posts'
 import ShareThemeToggle from './share-theme-toggle'
 
 const code = createCodePlugin({
@@ -13,11 +13,10 @@ const cjk = createCjkPlugin()
 
 type BlogReadonlyViewProps = {
   post?: BlogPost
-  image?: BlogImage
   stream?: boolean
 }
 
-export default function BlogReadonlyView({ post, image, stream = true }: BlogReadonlyViewProps) {
+export default function BlogReadonlyView({ post, stream = true }: BlogReadonlyViewProps) {
   const postContent = post?.content ?? ''
   const hasContent = Boolean(postContent.trim())
   const [streamedContent, setStreamedContent] = useState('')
@@ -137,7 +136,7 @@ export default function BlogReadonlyView({ post, image, stream = true }: BlogRea
     })
   }, [isStreaming, streamedContent, stream])
 
-  if (!post && !image) {
+  if (!post) {
     return (
       <main className="mx-auto flex min-h-[60vh] w-full max-w-3xl flex-col items-center justify-center gap-3 bg-(--color-card) px-6 text-center">
         <div className="mb-4 flex justify-end sm:fixed sm:top-4 sm:right-4 sm:z-20">
@@ -146,30 +145,6 @@ export default function BlogReadonlyView({ post, image, stream = true }: BlogRea
         <SearchX className="size-9 text-[#8f9bbd]" />
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">文章不存在</h1>
         <p className="text-sm text-muted-foreground">该分享链接无效或内容已被移除。</p>
-      </main>
-    )
-  }
-
-  if (image) {
-    return (
-      <main className="mx-auto w-full max-w-4xl bg-(--color-card) px-4 pt-5 pb-10">
-        <div className="mb-4 flex justify-end sm:fixed sm:top-4 sm:right-4 sm:z-20">
-          <ShareThemeToggle />
-        </div>
-        <header className="mb-6 space-y-2">
-          <h1 className="m-0 text-[24px] leading-[1.2] font-semibold tracking-tight text-foreground xl:text-[28px]">
-            {image.meta.title}
-          </h1>
-          <p className="text-[12px] text-muted-foreground">{image.meta.sourcePath}</p>
-        </header>
-        <div className="overflow-hidden rounded-lg border border-border bg-(--color-card) p-2">
-          <img
-            src={image.imageUrl}
-            alt={image.meta.title}
-            className="mx-auto block max-h-[80dvh] w-auto max-w-full rounded"
-            loading="lazy"
-          />
-        </div>
       </main>
     )
   }

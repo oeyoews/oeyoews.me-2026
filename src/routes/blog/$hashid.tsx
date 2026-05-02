@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { allPosts, allTreeItems, getImageByHashid, getPostByHashid } from '../../blog/posts'
+import { allPosts, allTreeItems, getPostByHashid } from '../../blog/posts'
 import BlogListPage from '../../components/blog-list-page'
 
 type TocItem = {
@@ -59,19 +59,17 @@ function extractToc(content: string): TocItem[] {
 export const Route = createFileRoute('/blog/$hashid')({
   loader: ({ params }) => {
     const activePost = getPostByHashid(params.hashid)
-    const activeImage = activePost ? undefined : getImageByHashid(params.hashid)
 
     return {
       posts: allPosts,
       treeItems: allTreeItems,
       activePost,
-      activeImage,
       toc: activePost ? extractToc(activePost.content) : [],
     }
   },
   head: ({ loaderData }) => {
     if (!loaderData) return {}
-    const title = loaderData.activePost?.meta.title || loaderData.activeImage?.meta.title || 'Blog'
+    const title = loaderData.activePost?.meta.title || 'Blog'
     const description = loaderData.activePost?.meta.description
     return {
       meta: [
@@ -84,13 +82,12 @@ export const Route = createFileRoute('/blog/$hashid')({
 })
 
 function BlogPostPage() {
-  const { posts, treeItems, activePost, activeImage, toc } = Route.useLoaderData()
+  const { posts, treeItems, activePost, toc } = Route.useLoaderData()
   return (
     <BlogListPage
       posts={posts}
       treeItems={treeItems}
       activePost={activePost}
-      activeImage={activeImage}
       toc={Array.isArray(toc) ? toc : []}
     />
   )

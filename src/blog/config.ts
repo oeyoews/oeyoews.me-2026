@@ -3,7 +3,7 @@ export const blogContentConfig = {
 } as const
 
 export const blogUiConfig = {
-  explorerVersion: 'v2026.04',
+  explorerVersion: 'v2026.05',
 } as const
 
 export const blogAuthConfig = {
