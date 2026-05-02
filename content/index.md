@@ -4,7 +4,7 @@ date: "2026-05-02"
 description: oeyoews.me 的入口：写作、日记与长文阅读，像本地编辑器一样浏览。
 ---
 
-![工作台一角](./article-illustration-workspace.png)
+![工作台一角](./image.png)
 
 # 你好，这里是 oeyoews.me
 

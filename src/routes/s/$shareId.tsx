@@ -5,12 +5,36 @@ import { getPostByHashid } from '../../blog/posts'
 import BlogReadonlyView from '../../components/blog-readonly-view'
 
 type ShareSearch = {
-  stream?: string
+  /** 0 = 关闭流式，1 = 开启；用数字可避免 Router 默认 stringifySearch 对字符串做 JSON 编码从而在地址栏出现 "0" */
+  stream?: 0 | 1
+}
+
+function normalizeStreamSearchParam(raw: Record<string, unknown>): 0 | 1 | undefined {
+  const v = raw.stream
+  if (v === undefined || v === null) return undefined
+  if (typeof v === 'number') {
+    if (!Number.isFinite(v)) return undefined
+    return v === 0 ? 0 : 1
+  }
+  if (typeof v === 'boolean') return v ? 1 : 0
+  if (typeof v === 'string') {
+    const t = v.trim().toLowerCase()
+    if (t === '') return undefined
+    if (t === '0' || t === 'false' || t === 'off') return 0
+    if (t === '1' || t === 'true' || t === 'on') return 1
+    const n = Number(t)
+    if (Number.isFinite(n)) return n === 0 ? 0 : 1
+    return undefined
+  }
+  if (Array.isArray(v) && v.length > 0) {
+    return normalizeStreamSearchParam({ stream: v[0] })
+  }
+  return undefined
 }
 
 export const Route = createFileRoute('/s/$shareId')({
   validateSearch: (raw: Record<string, unknown>): ShareSearch => ({
-    stream: typeof raw.stream === 'string' ? raw.stream : undefined,
+    stream: normalizeStreamSearchParam(raw),
   }),
   loader: ({ params }) => {
     const { hashid, passwordDigest } = decodeShareToken(params.shareId)
@@ -43,9 +67,7 @@ function ShareReadonlyPage() {
   const [error, setError] = useState('')
 
   const shouldProtect = Number.isInteger(passwordDigest)
-  const streamEnabled = streamParam
-    ? !['0', 'false', 'off'].includes(streamParam.toLowerCase())
-    : true
+  const streamEnabled = streamParam === undefined ? true : streamParam !== 0
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

@@ -4,6 +4,7 @@ import { createCjkPlugin } from '@streamdown/cjk'
 import { CalendarDays, Quote, SearchX } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { BlogPost } from '../blog/posts'
+import { streamdownMarkdownAllowedTags } from '@/lib/streamdown-markdown-allowed-tags'
 import ShareThemeToggle from './share-theme-toggle'
 
 const code = createCodePlugin({
@@ -16,7 +17,7 @@ type BlogReadonlyViewProps = {
   stream?: boolean
 }
 
-export default function BlogReadonlyView({ post, stream = true }: BlogReadonlyViewProps) {
+export default function BlogReadonlyView({ post, stream = false }: BlogReadonlyViewProps) {
   const postContent = post?.content ?? ''
   const hasContent = Boolean(postContent.trim())
   const [streamedContent, setStreamedContent] = useState('')
@@ -178,6 +179,7 @@ export default function BlogReadonlyView({ post, stream = true }: BlogReadonlyVi
         {hasContent ? (
           <div className="blog-article-content max-w-none prose-pre:my-0">
             <Streamdown
+              allowedTags={streamdownMarkdownAllowedTags}
               linkSafety={{ enabled: false }}
               mode={stream ? 'streaming' : 'static'}
               isAnimating={isStreaming}

@@ -9,6 +9,7 @@ import { encodeShareToken } from '../blog/share-id'
 import BlogFileTree from './blog-file-tree'
 import VscodeActivityBar from './vscode-activity-bar'
 import { withBaseUrl } from '@/lib/base-url'
+import { streamdownMarkdownAllowedTags } from '@/lib/streamdown-markdown-allowed-tags'
 import { cn } from '@/lib/utils'
 
 type BlogListPageProps = {
@@ -235,7 +236,7 @@ export default function BlogListPage({
   const [shareAction, setShareAction] = useState<'copy-link' | 'copy-article' | 'download-md' | 'open-new-tab'>('copy-link')
   const [shareState, setShareState] = useState<'idle' | 'copied-link' | 'copied-article' | 'failed'>('idle')
   const [sharePassword, setSharePassword] = useState('')
-  const [shareStreamEnabled, setShareStreamEnabled] = useState(true)
+  const [shareStreamEnabled, setShareStreamEnabled] = useState(false)
   const shareResetTimerRef = useRef<number | null>(null)
   const shareMenuRef = useRef<HTMLDivElement>(null)
   const leftPaneEntries = useMemo(() => buildKeyboardNavEntries(treeItems), [treeItems])
@@ -327,7 +328,7 @@ export default function BlogListPage({
   }
 
   const buildShareUrl = (shareToken: string) => {
-    const params = new URLSearchParams({ stream: shareStreamEnabled ? '1' : '0' })
+    const params = new URLSearchParams({ stream: String(shareStreamEnabled ? 1 : 0) })
     const hashHref = `#/s/${shareToken}?${params.toString()}`
     return new URL(withBaseUrl(hashHref), window.location.origin).toString()
   }
@@ -409,11 +410,6 @@ export default function BlogListPage({
     document.body.appendChild(anchor)
     anchor.click()
     document.body.removeChild(anchor)
-
-    // fallback for environments where synthetic anchor click is blocked
-    if (document.visibilityState === 'visible') {
-      window.open(targetUrl, '_blank')
-    }
   }
 
   const runShareAction = async () => {
@@ -1050,7 +1046,14 @@ export default function BlogListPage({
                     ref={contentRef}
                     className="blog-article-content max-w-none prose-pre:my-0"
                   >
-                    <Streamdown linkSafety={{ enabled: false }} key={activePost.meta.hashid} mode="static" plugins={{ code, cjk }} controls={{ code: { download: false } }}>
+                    <Streamdown
+                      allowedTags={streamdownMarkdownAllowedTags}
+                      linkSafety={{ enabled: false }}
+                      key={activePost.meta.hashid}
+                      mode="static"
+                      plugins={{ code, cjk }}
+                      controls={{ code: { download: false } }}
+                    >
                       {activePost.content}
                     </Streamdown>
                   </div>
