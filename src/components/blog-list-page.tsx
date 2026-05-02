@@ -8,6 +8,7 @@ import type { BlogImage, BlogPost, BlogPostMeta, BlogTreeItem } from '../blog/po
 import { encodeShareToken } from '../blog/share-id'
 import BlogFileTree from './blog-file-tree'
 import VscodeActivityBar from './vscode-activity-bar'
+import { withBaseUrl } from '@/lib/base-url'
 import { cn } from '@/lib/utils'
 
 type BlogListPageProps = {
@@ -328,9 +329,9 @@ export default function BlogListPage({
   }
 
   const buildShareUrl = (shareToken: string) => {
-    const url = new URL(`/s/${shareToken}`, window.location.origin)
-    url.searchParams.set('stream', shareStreamEnabled ? '1' : '0')
-    return url.toString()
+    const params = new URLSearchParams({ stream: shareStreamEnabled ? '1' : '0' })
+    const hashHref = `#/s/${shareToken}?${params.toString()}`
+    return new URL(withBaseUrl(hashHref), window.location.origin).toString()
   }
 
   const shareCurrent = async () => {
@@ -1168,16 +1169,15 @@ export default function BlogListPage({
                     focusedTocId === item.id && activePane === 'right' && 'toc-item-focused',
                   )}
                 >
-                  <a
-                    href={`#${item.id}`}
-                    className="toc-link"
-                    onClick={(event) => {
-                      event.preventDefault()
-                      scrollToHeading(item.id)
-                    }}
+                  <button
+                    type="button"
+                    className={cn(
+                      'toc-link w-full cursor-pointer border-0 bg-transparent p-0 text-left font-inherit',
+                    )}
+                    onClick={() => scrollToHeading(item.id)}
                   >
                     {item.text}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>

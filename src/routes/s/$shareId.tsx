@@ -4,7 +4,14 @@ import { decodeShareToken, verifySharePassword } from '../../blog/share-id'
 import { getImageByHashid, getPostByHashid } from '../../blog/posts'
 import BlogReadonlyView from '../../components/blog-readonly-view'
 
+type ShareSearch = {
+  stream?: string
+}
+
 export const Route = createFileRoute('/s/$shareId')({
+  validateSearch: (raw: Record<string, unknown>): ShareSearch => ({
+    stream: typeof raw.stream === 'string' ? raw.stream : undefined,
+  }),
   loader: ({ params }) => {
     const { hashid, passwordDigest } = decodeShareToken(params.shareId)
     if (!hashid) {
@@ -30,15 +37,16 @@ export const Route = createFileRoute('/s/$shareId')({
 })
 
 function ShareReadonlyPage() {
+  const { stream: streamParam } = Route.useSearch()
   const { post, image, passwordDigest } = Route.useLoaderData()
   const [inputPassword, setInputPassword] = useState('')
   const [authed, setAuthed] = useState(false)
   const [error, setError] = useState('')
 
   const shouldProtect = Number.isInteger(passwordDigest)
-  const streamQuery =
-    typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('stream')
-  const streamEnabled = streamQuery ? !['0', 'false', 'off'].includes(streamQuery.toLowerCase()) : true
+  const streamEnabled = streamParam
+    ? !['0', 'false', 'off'].includes(streamParam.toLowerCase())
+    : true
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

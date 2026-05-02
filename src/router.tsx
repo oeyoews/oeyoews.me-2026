@@ -1,10 +1,10 @@
-import { createBrowserHistory, createRouter as createTanStackRouter } from '@tanstack/react-router'
+import { createHashHistory, createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
 export function getRouter() {
   const router = createTanStackRouter({
     routeTree,
-    history: typeof window !== 'undefined' ? createBrowserHistory() : undefined,
+    history: typeof window !== 'undefined' ? createHashHistory() : undefined,
     scrollRestoration: true,
     scrollToTopSelectors: ['.blog-col-main'],
     defaultPreload: 'intent',
