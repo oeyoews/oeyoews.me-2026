@@ -148,13 +148,30 @@ function resolveMarkdownImageRef(mdSourcePath: string, ref: string): string | nu
   return resolved.replace(/\/{2,}/g, '/')
 }
 
-/** Rewrite ![](relative) to Vite-resolved asset URLs for files under content/. */
+/** Rewrite <img src="relative"> to Vite-resolved asset URLs (supports multiline tags). */
+function rewriteHtmlImgSrcUrls(
+  markdown: string,
+  mdSourcePath: string,
+  urlBySourcePath: Map<string, string>,
+): string {
+  return markdown.replace(/<img\b[\s\S]*?>/gi, (tag) =>
+    tag.replace(/\bsrc\s*=\s*(["'])([^"']*)\1/i, (whole, quote: string, rawUrl: string) => {
+      const resolved = resolveMarkdownImageRef(mdSourcePath, rawUrl)
+      if (!resolved) return whole
+      const built = urlBySourcePath.get(resolved)
+      if (!built) return whole
+      return `src=${quote}${built}${quote}`
+    }),
+  )
+}
+
+/** Rewrite ![](relative) and HTML <img src="relative"> to Vite-resolved asset URLs for files under content/. */
 function rewriteLocalImageUrls(
   markdown: string,
   mdSourcePath: string,
   urlBySourcePath: Map<string, string>,
 ): string {
-  return markdown.replace(/!\[([^\]]*)\]\(\s*([^)]+)\s*\)/g, (whole, alt, inner) => {
+  const afterMd = markdown.replace(/!\[([^\]]*)\]\(\s*([^)]+)\s*\)/g, (whole, alt, inner) => {
     const trimmed = inner.trim()
     const quotedTitle = trimmed.match(/^(\S+)\s+["']([^"']*)["']\s*$/)
     const rawUrl = quotedTitle?.[1] ?? trimmed.split(/\s+/)[0]
@@ -166,6 +183,7 @@ function rewriteLocalImageUrls(
     const titleSuffix = title !== undefined ? ` "${title.replace(/"/g, '\\"')}"` : ''
     return `![${alt}](${built}${titleSuffix})`
   })
+  return rewriteHtmlImgSrcUrls(afterMd, mdSourcePath, urlBySourcePath)
 }
 
 // Vite requires literal patterns in import.meta.glob.

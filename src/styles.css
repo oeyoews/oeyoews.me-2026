@@ -400,6 +400,60 @@
     animation: blog-content-fade-in 200ms ease-out;
   }
 
+  /** 首页 index.md：区块入场与卡片错层 */
+  .home-section-in {
+    animation: home-section-in 0.58s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .home-section-in-delay-1 {
+    animation-delay: 80ms;
+  }
+
+  .home-section-in-delay-2 {
+    animation-delay: 160ms;
+  }
+
+  .home-section-in-delay-3 {
+    animation-delay: 240ms;
+  }
+
+  .home-section-in-delay-4 {
+    animation-delay: 320ms;
+  }
+
+  .home-section-in-delay-5 {
+    animation-delay: 400ms;
+  }
+
+  .home-child-in {
+    animation: home-section-in 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .home-child-in-d0 {
+    animation-delay: 0ms;
+  }
+
+  .home-child-in-d1 {
+    animation-delay: 70ms;
+  }
+
+  .home-child-in-d2 {
+    animation-delay: 140ms;
+  }
+
+  .home-child-in-d3 {
+    animation-delay: 210ms;
+  }
+
+  /** 轻量霓虹感：背景光斑缓慢漂移（仅装饰层） */
+  .home-orb-drift-a {
+    animation: home-orb-drift-a 14s ease-in-out infinite alternate;
+  }
+
+  .home-orb-drift-b {
+    animation: home-orb-drift-b 18s ease-in-out infinite alternate;
+  }
+
   .blog-article-content pre {
     max-width: 100%;
     overflow-x: auto;
@@ -650,8 +704,62 @@
   }
 }
 
+@keyframes home-section-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes home-orb-drift-a {
+  from {
+    opacity: 0.55;
+    transform: translate(0, 0) scale(1);
+  }
+
+  to {
+    opacity: 0.85;
+    transform: translate(-12px, 16px) scale(1.06);
+  }
+}
+
+@keyframes home-orb-drift-b {
+  from {
+    opacity: 0.4;
+    transform: translate(0, 0) scale(1);
+  }
+
+  to {
+    opacity: 0.72;
+    transform: translate(14px, -10px) scale(1.05);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .blog-content-fade-enter {
     animation: none;
+  }
+
+  .home-section-in,
+  .home-section-in-delay-1,
+  .home-section-in-delay-2,
+  .home-section-in-delay-3,
+  .home-section-in-delay-4,
+  .home-section-in-delay-5,
+  .home-child-in,
+  .home-child-in-d0,
+  .home-child-in-d1,
+  .home-child-in-d2,
+  .home-child-in-d3,
+  .home-orb-drift-a,
+  .home-orb-drift-b {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
   }
 }
