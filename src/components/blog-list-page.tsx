@@ -71,9 +71,13 @@ function compareKeyboardNavNodes(a: KeyboardNavNode, b: KeyboardNavNode) {
   return a.name.localeCompare(b.name)
 }
 
-function buildKeyboardNavEntries(
-  treeItems: BlogTreeItem[],
-): Array<{ path: string; type: 'dir' | 'file'; hashid?: string }> {
+function buildKeyboardNavEntries(treeItems: BlogTreeItem[]): Array<{
+  path: string
+  type: 'dir' | 'file'
+  hashid?: string
+  /** Parent dir paths in the collapsed tree (same segments as BlogFileTree nodePath). */
+  ancestorDirs: string[]
+}> {
   const root = createKeyboardNavNode('', '')
 
   for (const item of treeItems) {
@@ -130,20 +134,25 @@ function buildKeyboardNavEntries(
     root.children = collapsedRootChildren
   }
 
-  const result: Array<{ path: string; type: 'dir' | 'file'; hashid?: string }> = []
-  const walk = (node: KeyboardNavNode) => {
+  const result: Array<{
+    path: string
+    type: 'dir' | 'file'
+    hashid?: string
+    ancestorDirs: string[]
+  }> = []
+  const walk = (node: KeyboardNavNode, ancestorDirs: string[]) => {
     const children = Array.from(node.children.values()).sort(compareKeyboardNavNodes)
     for (const child of children) {
       if (child.hashid) {
-        result.push({ path: child.path, type: 'file', hashid: child.hashid })
+        result.push({ path: child.path, type: 'file', hashid: child.hashid, ancestorDirs })
       } else {
-        result.push({ path: child.path, type: 'dir' })
-        walk(child)
+        result.push({ path: child.path, type: 'dir', ancestorDirs })
+        walk(child, [...ancestorDirs, child.path])
       }
     }
   }
 
-  walk(root)
+  walk(root, [])
   return result
 }
 
@@ -242,18 +251,9 @@ export default function BlogListPage({
   const leftPaneEntries = useMemo(() => buildKeyboardNavEntries(treeItems), [treeItems])
   const openDirectoryPathSet = useMemo(() => new Set(openDirectoryPaths), [openDirectoryPaths])
   const visibleLeftPaneEntries = useMemo(() => {
-    const isVisible = (entryPath: string, type: 'dir' | 'file') => {
-      const parts = entryPath.split('/').filter(Boolean)
-      const end = type === 'dir' ? parts.length - 1 : parts.length - 1
-      let acc = ''
-      for (let i = 0; i < end; i += 1) {
-        acc = acc ? `${acc}/${parts[i]}` : parts[i]
-        if (!openDirectoryPathSet.has(acc)) return false
-      }
-      return true
-    }
-
-    return leftPaneEntries.filter((entry) => isVisible(entry.path, entry.type))
+    return leftPaneEntries.filter((entry) =>
+      entry.ancestorDirs.every((dirPath) => openDirectoryPathSet.has(dirPath)),
+    )
   }, [leftPaneEntries, openDirectoryPathSet])
   const orderedPostsByTree = useMemo(() => {
     const postByHashid = new Map(posts.map((post) => [post.hashid, post] as const))
