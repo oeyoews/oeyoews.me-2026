@@ -561,11 +561,28 @@
   }
 
   .toc-list {
-    @apply space-y-0 px-1 py-2;
+    @apply space-y-0 px-1 py-2 text-sm leading-snug;
+    position: relative;
+    /* Shared with H3 branch lines; outer spine uses the same tone. */
+    --toc-guide: #4a5878;
+    /* First-line anchor: ul has no per-row py; li rows use py-1 (see .toc-item). */
+    --toc-line-y: calc(0.25rem + 0.5lh);
+  }
+
+  /* Outermost spine: inset to first / last row first-line (avoids full-bleed height mismatch). */
+  .toc-list::before {
+    content: '';
+    position: absolute;
+    left: calc(0.25rem + 0.6rem);
+    top: calc(0.5rem + var(--toc-line-y));
+    bottom: calc(0.5rem + var(--toc-line-y));
+    width: 1px;
+    background: var(--toc-guide);
+    pointer-events: none;
   }
 
   .toc-item {
-    @apply relative rounded-sm px-2 py-1 pl-6 text-sm;
+    @apply relative rounded-sm px-2 py-1 pl-6 text-sm leading-snug;
     color: #aeb9d4;
     border: 1px solid transparent;
     transition:
@@ -573,25 +590,6 @@
       color 160ms ease,
       border-color 160ms ease,
       box-shadow 160ms ease;
-  }
-
-  .toc-item::before {
-    content: '';
-    position: absolute;
-    left: 0.6rem;
-    top: -0.2rem;
-    bottom: -0.2rem;
-    width: 1px;
-    background: #2f3750;
-    pointer-events: none;
-  }
-
-  .toc-item:first-child::before {
-    top: 50%;
-  }
-
-  .toc-item:last-child::before {
-    bottom: 50%;
   }
 
   .toc-item:hover {
@@ -612,17 +610,43 @@
     @apply ml-3 text-sm;
   }
 
+  /* Vertical trunk: only between consecutive H3 blocks (not under plain H2 siblings). */
+  .toc-item-child::before {
+    content: '';
+    position: absolute;
+    left: 0.6rem;
+    width: 1px;
+    background: var(--toc-guide);
+    pointer-events: none;
+    top: 0;
+    bottom: 0;
+  }
+
+  .toc-item-child.toc-branch-start:not(.toc-branch-end)::before {
+    top: var(--toc-line-y);
+    bottom: 0;
+  }
+
+  .toc-item-child.toc-branch-end:not(.toc-branch-start)::before {
+    top: 0;
+    bottom: calc(100% - var(--toc-line-y));
+  }
+
+  .toc-item-child.toc-branch-start.toc-branch-end::before {
+    top: var(--toc-line-y);
+    bottom: calc(100% - var(--toc-line-y));
+  }
+
   .toc-item-child::after {
     content: '';
     position: absolute;
     left: 0.6rem;
-    top: 50%;
-    width: 0.85rem;
-    height: 0.65rem;
-    border-left: 1px solid #2f3750;
-    border-bottom: 1px solid #2f3750;
-    border-bottom-left-radius: 0;
-    transform: translateY(-100%);
+    top: var(--toc-line-y);
+    width: 0.75rem;
+    height: 0.5rem;
+    border-left: 1px solid var(--toc-guide);
+    border-bottom: 1px solid var(--toc-guide);
+    transform: translateY(-50%);
     pointer-events: none;
   }
 

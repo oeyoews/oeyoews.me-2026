@@ -1154,12 +1154,20 @@ export default function BlogListPage({
               <span>本页目录</span>
             </p>
             <ul className="toc-list min-h-0 flex-1 overflow-y-auto overscroll-contain">
-              {toc.map((item) => (
+              {toc.map((item, index) => {
+                const prev = toc[index - 1]
+                const next = toc[index + 1]
+                const isChild = item.level === 3
+                const branchStart = isChild && (!prev || prev.level !== 3)
+                const branchEnd = isChild && (!next || next.level !== 3)
+                return (
                 <li
                   key={`${item.level}-${item.id}`}
                   className={cn(
                     'toc-item',
-                    item.level === 3 && 'toc-item-child',
+                    isChild && 'toc-item-child',
+                    branchStart && 'toc-branch-start',
+                    branchEnd && 'toc-branch-end',
                     activeTocId === item.id && 'toc-item-active',
                     focusedTocId === item.id && activePane === 'right' && 'toc-item-focused',
                   )}
@@ -1174,7 +1182,8 @@ export default function BlogListPage({
                     {item.text}
                   </button>
                 </li>
-              ))}
+                )
+              })}
             </ul>
           </aside>
         ) : null}
