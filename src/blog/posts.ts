@@ -4,6 +4,8 @@ export type BlogPostMeta = {
   title?: string
   date: string
   description?: string
+  /** Resolved URL: bundled asset path, site-absolute `/…`, or full `https://…`. */
+  image?: string
   hashid: string
   treePath: string
   sourcePath: string
@@ -148,6 +150,22 @@ function resolveMarkdownImageRef(mdSourcePath: string, ref: string): string | nu
   return resolved.replace(/\/{2,}/g, '/')
 }
 
+/** Frontmatter `image`: external URL, site-absolute path, or path relative to the markdown file. */
+function resolveFrontmatterImageUrl(
+  raw: string,
+  mdSourcePath: string,
+  urlBySourcePath: Map<string, string>,
+): string | undefined {
+  const trimmed = raw.trim()
+  if (!trimmed) return undefined
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('//')) return trimmed
+  if (trimmed.startsWith('data:')) return trimmed
+  if (trimmed.startsWith('/')) return trimmed
+  const resolved = resolveMarkdownImageRef(mdSourcePath, trimmed)
+  if (!resolved) return undefined
+  return urlBySourcePath.get(resolved)
+}
+
 /** Rewrite <img src="relative"> to Vite-resolved asset URLs (supports multiline tags). */
 function rewriteHtmlImgSrcUrls(
   markdown: string,
@@ -225,10 +243,17 @@ const parsedPosts = Object.entries(rawPosts).map(([path, raw]) => {
       ? fm.data.description.trim()
       : undefined
 
+  const imageRaw =
+    typeof fm.data?.image === 'string' && fm.data.image.trim() ? fm.data.image.trim() : undefined
+  const image = imageRaw
+    ? resolveFrontmatterImageUrl(imageRaw, relativeContentPath, imageUrlBySourcePath)
+    : undefined
+
   const meta: BlogPostMeta = {
     title,
     date,
     description,
+    ...(image ? { image } : {}),
     hashid,
     treePath,
     sourcePath: relativeContentPath,

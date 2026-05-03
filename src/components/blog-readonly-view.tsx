@@ -162,6 +162,17 @@ export default function BlogReadonlyView({ post, stream = false }: BlogReadonlyV
               {post.meta.title}
             </h1>
           ) : null}
+          {post?.meta.image ? (
+            <div className="mt-4 overflow-hidden rounded-lg border border-border bg-muted/30">
+              <img
+                src={post.meta.image}
+                alt={post.meta.title ? `${post.meta.title} 封面` : ''}
+                className="max-h-[min(420px,50vh)] w-full object-cover"
+                loading="eager"
+                decoding="async"
+              />
+            </div>
+          ) : null}
           {post?.meta.date ? (
             <p className="mt-3 flex w-full items-center justify-end gap-1.5 text-[12px] text-muted-foreground">
               <CalendarDays className="size-3.5 shrink-0" />

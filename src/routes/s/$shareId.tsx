@@ -49,10 +49,17 @@ export const Route = createFileRoute('/s/$shareId')({
     if (!loaderData) return {}
     const title = loaderData.post?.meta.title || 'Share'
     const description = loaderData.post?.meta.description
+    const image = loaderData.post?.meta.image
     return {
       meta: [
         { title },
         ...(description ? [{ name: 'description', content: description }] : []),
+        ...(image
+          ? [
+              { property: 'og:image', content: image },
+              { name: 'twitter:image', content: image },
+            ]
+          : []),
       ],
     }
   },

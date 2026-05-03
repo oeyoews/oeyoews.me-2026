@@ -763,3 +763,7 @@
     transform: none;
   }
 }
+
+[data-streamdown='image-wrapper'] {
+  @apply my-0!;
+}

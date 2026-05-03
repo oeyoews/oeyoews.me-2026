@@ -1026,6 +1026,17 @@ export default function BlogListPage({
               {activePost ? (
                 <>
                 <header className="mb-6">
+                  {activePost.meta.image ? (
+                    <div className="mb-4 overflow-hidden rounded-lg border border-border bg-muted/30">
+                      <img
+                        src={activePost.meta.image}
+                        alt={activePost.meta.title ? `${activePost.meta.title} 封面` : ''}
+                        className="max-h-[min(420px,50vh)] w-full object-cover"
+                        loading="eager"
+                        decoding="async"
+                      />
+                    </div>
+                  ) : null}
                   {activePost.meta.date ? (
                     <p className="mt-3 flex w-full items-center justify-end gap-1.5 text-[12px] text-muted-foreground">
                       <CalendarDays className="size-3.5 shrink-0" />
