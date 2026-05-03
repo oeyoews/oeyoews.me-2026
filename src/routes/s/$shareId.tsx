@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, type FormEvent } from 'react'
+import { useState, type SubmitEvent } from 'react'
 import { decodeShareToken, verifySharePassword } from '../../blog/share-id'
 import { getPostByHashid } from '../../blog/posts'
 import BlogReadonlyView from '../../components/blog-readonly-view'
@@ -69,7 +69,7 @@ function ShareReadonlyPage() {
   const shouldProtect = Number.isInteger(passwordDigest)
   const streamEnabled = streamParam === undefined ? true : streamParam !== 0
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     if (passwordDigest === undefined || !verifySharePassword(inputPassword, passwordDigest)) {
       setError('密码错误，请重试。')
