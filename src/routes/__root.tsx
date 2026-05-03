@@ -1,7 +1,6 @@
 import { HeadContent, Link, Scripts, createRootRoute, useRouterState } from '@tanstack/react-router'
 import { SearchX } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useMemo, useState, type SubmitEvent } from 'react'
 import CommandPalette from '../components/command-palette'
 import { clearAuthed, isAuthed, setAuthed, verifyPassword } from '../lib/auth'
 import { withBaseUrl } from '../lib/base-url'
@@ -109,7 +108,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   const isPublic = useMemo(() => isPublicPath(pathname), [pathname])
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!verifyPassword(password)) {
       setError('密码错误，请重试。')
