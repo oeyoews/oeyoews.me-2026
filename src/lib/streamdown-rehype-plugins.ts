@@ -4,7 +4,7 @@ import type { Schema } from 'hast-util-sanitize'
 import type { PluggableList } from 'unified'
 import { streamdownMarkdownAllowedTags } from '@/lib/streamdown-markdown-allowed-tags'
 
-/** Octicons in `rehype-github-alerts` v4；GitHub 默认 sanitize 不含 svg/path，需显式放行 */
+/** `rehype-github-alerts` v4 会为警报标题插入 Octicon 矢量图标；GitHub 默认的 sanitize 规则未放行 svg/path，须在模式中显式允许 */
 const rehypeGithubAlertsSvgTags: Record<string, string[]> = {
   svg: [
     'className',
@@ -25,7 +25,7 @@ const rehypeGithubAlertsSvgTags: Record<string, string[]> = {
 function mergeSanitizeSchemaLikeStreamdown(): Schema {
   const sanitize = defaultRehypePlugins.sanitize
   if (!Array.isArray(sanitize)) {
-    throw new Error('streamdown: default sanitize plugin must be a tuple')
+    throw new Error('streamdown：默认 sanitize 插件须为 [插件, 配置] 元组')
   }
   const [, ze] = sanitize as [unknown, Schema]
   const extraAttrs = { ...streamdownMarkdownAllowedTags, ...rehypeGithubAlertsSvgTags }
@@ -37,15 +37,15 @@ function mergeSanitizeSchemaLikeStreamdown(): Schema {
 }
 
 /**
- * 与默认 Streamdown 顺序一致：`raw` → GitHub alerts → `sanitize`（合并 allowedTags）→ `harden`。
- * 必须整体传入：若只传 alerts，会替换默认管道并丢掉 sanitize / allowedTags 合并逻辑。
+ * 与 Streamdown 默认管线顺序一致：`raw` → GitHub 提示框（rehypeGithubAlerts）→ `sanitize`（合并允许标签）→ `harden`。
+ * 须返回完整列表一次性传入：若只单独传入提示框插件，会覆盖默认 rehype 列表，从而丢失 sanitize 与允许标签的合并逻辑。
  */
 function createStreamdownRehypePlugins(): PluggableList {
   const raw = defaultRehypePlugins.raw
   const sanitizeEntry = defaultRehypePlugins.sanitize
   const harden = defaultRehypePlugins.harden
   if (!Array.isArray(sanitizeEntry)) {
-    throw new Error('streamdown: default sanitize plugin must be a tuple')
+    throw new Error('streamdown：默认 sanitize 插件须为 [插件, 配置] 元组')
   }
   const [sanitizePlugin] = sanitizeEntry
   const schema = mergeSanitizeSchemaLikeStreamdown()
