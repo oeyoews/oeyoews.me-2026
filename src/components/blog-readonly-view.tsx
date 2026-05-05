@@ -5,6 +5,7 @@ import { CalendarDays, Quote, SearchX } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { BlogPost } from '../blog/posts'
 import { streamdownMarkdownAllowedTags } from '@/lib/streamdown-markdown-allowed-tags'
+import { streamdownRehypePlugins } from '@/lib/streamdown-rehype-plugins'
 import ShareThemeToggle from './share-theme-toggle'
 
 const code = createCodePlugin({
@@ -195,6 +196,7 @@ export default function BlogReadonlyView({ post, stream = false }: BlogReadonlyV
               mode={stream ? 'streaming' : 'static'}
               isAnimating={isStreaming}
               plugins={{ code, cjk }}
+              rehypePlugins={streamdownRehypePlugins}
               controls={{ code: { download: false } }}
             >
               {stream && isStreaming ? `${streamedContent}&nbsp;${isCaretBright ? '●' : '•'}` : streamedContent}

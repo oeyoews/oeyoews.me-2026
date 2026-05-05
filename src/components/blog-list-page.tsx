@@ -10,6 +10,7 @@ import BlogFileTree from './blog-file-tree'
 import VscodeActivityBar from './vscode-activity-bar'
 import { withBaseUrl } from '@/lib/base-url'
 import { streamdownMarkdownAllowedTags } from '@/lib/streamdown-markdown-allowed-tags'
+import { streamdownRehypePlugins } from '@/lib/streamdown-rehype-plugins'
 import { cn } from '@/lib/utils'
 
 type BlogListPageProps = {
@@ -1063,6 +1064,7 @@ export default function BlogListPage({
                       key={activePost.meta.hashid}
                       mode="static"
                       plugins={{ code, cjk }}
+                      rehypePlugins={streamdownRehypePlugins}
                       controls={{ code: { download: false } }}
                     >
                       {activePost.content}

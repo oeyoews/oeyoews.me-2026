@@ -2,6 +2,7 @@
 @plugin "@tailwindcss/typography";
 
 @import "streamdown/styles.css";
+@import "rehype-github-alerts/styling/css/index.css";
 
 @source "../node_modules/streamdown";
 @source "../node_modules/@streamdown/code/dist/*.js";
@@ -504,8 +505,65 @@
     cursor: default;
   }
 
-  .blog-article-content :where(p:not(blockquote p)) {
+  .blog-article-content :where(p:not(blockquote p):not(.markdown-alert p)) {
     text-indent: 2em;
+  }
+
+  /* GFM alerts：胶囊条与正文留出足够水平空隙 */
+  .blog-article-content .markdown-alert {
+    --alert-pill-left: 0.75rem;
+    --alert-pill-width: 4px;
+    --alert-pill-gap: 1.5rem;
+    position: relative;
+    border-left: none !important;
+    border-radius: var(--radius-xl);
+    margin-bottom: 1.75rem;
+    padding: 1rem 1.25rem 1rem
+      calc(var(--alert-pill-left) + var(--alert-pill-width) + var(--alert-pill-gap));
+  }
+
+  .blog-article-content .markdown-alert::before {
+    content: '';
+    position: absolute;
+    left: var(--alert-pill-left);
+    top: 1rem;
+    bottom: 1rem;
+    width: var(--alert-pill-width);
+    border-radius: 9999px;
+    background: var(--rehype-github-alerts-default-color);
+    left: 1px;
+  }
+
+  .blog-article-content .markdown-alert-title {
+    margin-bottom: 0.5rem;
+  }
+
+  .blog-article-content .markdown-alert > p:not(.markdown-alert-title) {
+    margin-top: 0;
+  }
+
+  .blog-article-content .markdown-alert > p:not(.markdown-alert-title) ~ p:not(.markdown-alert-title) {
+    margin-top: 0.5rem;
+  }
+
+  .blog-article-content .markdown-alert-note::before {
+    background: var(--rehype-github-alerts-note-color);
+  }
+
+  .blog-article-content .markdown-alert-tip::before {
+    background: var(--rehype-github-alerts-tip-color);
+  }
+
+  .blog-article-content .markdown-alert-important::before {
+    background: var(--rehype-github-alerts-important-color);
+  }
+
+  .blog-article-content .markdown-alert-warning::before {
+    background: var(--rehype-github-alerts-warning-color);
+  }
+
+  .blog-article-content .markdown-alert-caution::before {
+    background: var(--rehype-github-alerts-caution-color);
   }
 
   .explorer-heading {
