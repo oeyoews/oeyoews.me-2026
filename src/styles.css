@@ -397,6 +397,11 @@
     @apply mx-auto w-full max-w-[1100px];
   }
 
+  /** 开发源码 + 实时预览：占满主栏（不再限制 1100px） */
+  .blog-main-inner.blog-main-inner-dev-editor-wide {
+    @apply max-w-none;
+  }
+
   .blog-content-fade-enter {
     animation: blog-content-fade-in 200ms ease-out;
   }

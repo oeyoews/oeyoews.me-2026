@@ -5,6 +5,7 @@ import type { Plugin } from 'vite'
 import { blogContentConfig } from './src/blog/config'
 
 const ROUTE_SUFFIX = '/__dev/api/blog-md'
+const ROUTE_PATH_SUFFIX = '/__dev/api/blog-md-path'
 
 function readRequestBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -40,11 +41,39 @@ function pathnameMatchesRoute(url: string | undefined): boolean {
   return pathname === ROUTE_SUFFIX || pathname.endsWith(ROUTE_SUFFIX)
 }
 
+function pathnameMatchesPathRoute(url: string | undefined): boolean {
+  if (!url) return false
+  const pathname = new URL(url, 'http://dev.local').pathname
+  return pathname === ROUTE_PATH_SUFFIX || pathname.endsWith(ROUTE_PATH_SUFFIX)
+}
+
 export function devBlogSourcePlugin(): Plugin {
   return {
     name: 'dev-blog-source',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
+        if (req.method === 'GET' && pathnameMatchesPathRoute(req.url)) {
+          const u = new URL(req.url ?? '/', 'http://dev.local')
+          const sourcePath = u.searchParams.get('sourcePath')
+          if (!sourcePath) {
+            res.statusCode = 400
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+            res.end('missing sourcePath query')
+            return
+          }
+          const absolutePath = resolveSafeMarkdownPath(server.config.root, sourcePath)
+          if (!absolutePath) {
+            res.statusCode = 400
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+            res.end('invalid sourcePath')
+            return
+          }
+          res.statusCode = 200
+          res.setHeader('Content-Type', 'application/json; charset=utf-8')
+          res.end(JSON.stringify({ absolutePath }))
+          return
+        }
+
         if (req.method !== 'POST' || !pathnameMatchesRoute(req.url)) {
           return next()
         }

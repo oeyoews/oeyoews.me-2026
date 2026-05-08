@@ -206,6 +206,17 @@ function rewriteLocalImageUrls(
   return rewriteHtmlImgSrcUrls(afterMd, mdSourcePath, urlBySourcePath)
 }
 
+/**
+ * 开发时从当前草稿 `raw` 取出正文（与构建时 {@link parseFrontmatter} 边界一致），
+ * 并对本地图片链接做与 `content` 相同的解析，供右侧实时预览。
+ */
+export function markdownBodyForDevPreview(raw: string, mdSourcePath: string): string {
+  const fm = parseFrontmatter(raw)
+  const trimmed = fm.content.trim()
+  if (!trimmed) return ''
+  return rewriteLocalImageUrls(trimmed, mdSourcePath, imageUrlBySourcePath)
+}
+
 // Vite requires literal patterns in import.meta.glob.
 const rawPosts = import.meta.glob('../../content/**/*.md', {
   eager: true,

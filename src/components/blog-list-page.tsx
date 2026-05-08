@@ -23,10 +23,22 @@ import {
   SearchX,
   X,
 } from 'lucide-react'
-import type { BlogPost, BlogPostMeta, BlogTreeItem } from '../blog/posts'
+import { markdownBodyForDevPreview, type BlogPost, type BlogPostMeta, type BlogTreeItem } from '../blog/posts'
 import { encodeShareToken } from '../blog/share-id'
+import BlogDevCodemirrorMarkdown from './blog-dev-codemirror-markdown'
 import BlogFileTree from './blog-file-tree'
+import { CursorBrandIcon, VsCodeBrandIcon } from './ide-brand-icons'
 import VscodeActivityBar from './vscode-activity-bar'
+import {
+  BLOG_DEV_MD_EDITOR_DEFAULT_PREFS,
+  BLOG_DEV_MD_EDITOR_FONT_OPTIONS,
+  fontFamilyForBlogDevEditor,
+  readBlogDevMdEditorPrefs,
+  writeBlogDevMdEditorPrefs,
+  type BlogDevMdEditorFontId,
+  type BlogDevMdEditorPrefs,
+} from '@/lib/blog-dev-editor-prefs'
+import { openMarkdownInEditor } from '@/lib/blog-dev-open-editor'
 import { withBaseUrl } from '@/lib/base-url'
 import { streamdownMarkdownAllowedTags } from '@/lib/streamdown-markdown-allowed-tags'
 import { streamdownRehypePlugins } from '@/lib/streamdown-rehype-plugins'
@@ -270,8 +282,12 @@ export default function BlogListPage({
   const [devSourceMode, setDevSourceMode] = useState(false)
   const [devDraftRaw, setDevDraftRaw] = useState('')
   const [devSaveState, setDevSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [devMdEditorPrefs, setDevMdEditorPrefs] = useState<BlogDevMdEditorPrefs>(BLOG_DEV_MD_EDITOR_DEFAULT_PREFS)
   const shareResetTimerRef = useRef<number | null>(null)
   const shareMenuRef = useRef<HTMLDivElement>(null)
+  const [ideOpenMenuOpen, setIdeOpenMenuOpen] = useState(false)
+  const [ideOpenAction, setIdeOpenAction] = useState<'vscode' | 'cursor'>('vscode')
+  const ideOpenMenuRef = useRef<HTMLDivElement>(null)
   const leftPaneEntries = useMemo(() => buildKeyboardNavEntries(treeItems), [treeItems])
   const openDirectoryPathSet = useMemo(() => new Set(openDirectoryPaths), [openDirectoryPaths])
   const visibleLeftPaneEntries = useMemo(() => {
@@ -303,6 +319,19 @@ export default function BlogListPage({
     () => ({ '--left-sidebar-width': `${leftSidebarWidth}px` }) as CSSProperties,
     [leftSidebarWidth],
   )
+
+  const devLivePreviewMarkdown = useMemo(() => {
+    if (!devEditorEnabled || !activePost) return ''
+    return markdownBodyForDevPreview(devDraftRaw, activePost.meta.sourcePath)
+  }, [activePost, devDraftRaw, devEditorEnabled])
+
+  const updateDevMdEditorPrefs = (patch: Partial<BlogDevMdEditorPrefs>) => {
+    setDevMdEditorPrefs((prev) => {
+      const next = { ...prev, ...patch }
+      writeBlogDevMdEditorPrefs(next)
+      return next
+    })
+  }
 
   const openMobileTree = () => {
     if (mobileTreeCloseTimerRef.current !== null) {
@@ -478,6 +507,10 @@ export default function BlogListPage({
   }
 
   useEffect(() => {
+    setDevMdEditorPrefs(readBlogDevMdEditorPrefs())
+  }, [])
+
+  useEffect(() => {
     if (!devSourceMode || activePost?.raw === undefined) return
     setDevDraftRaw(activePost.raw)
   }, [activePost?.meta.hashid, activePost?.raw, devSourceMode])
@@ -532,7 +565,14 @@ export default function BlogListPage({
     return () => {
       scrollContainer.removeEventListener('scroll', updateActiveToc)
     }
-  }, [activePost?.content])
+  }, [
+    activePost?.content,
+    activePost?.meta.hashid,
+    devEditorEnabled,
+    devLivePreviewMarkdown,
+    devMdEditorPrefs.livePreviewEnabled,
+    devSourceMode,
+  ])
 
   useEffect(() => {
     return () => {
@@ -559,6 +599,24 @@ export default function BlogListPage({
       window.removeEventListener('keydown', handleEsc)
     }
   }, [shareMenuOpen])
+
+  useEffect(() => {
+    if (!ideOpenMenuOpen) return
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!ideOpenMenuRef.current?.contains(event.target as Node)) {
+        setIdeOpenMenuOpen(false)
+      }
+    }
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIdeOpenMenuOpen(false)
+    }
+    window.addEventListener('mousedown', handlePointerDown)
+    window.addEventListener('keydown', handleEsc)
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown)
+      window.removeEventListener('keydown', handleEsc)
+    }
+  }, [ideOpenMenuOpen])
 
   useEffect(() => {
     if (!currentHashid) return
@@ -937,20 +995,103 @@ export default function BlogListPage({
                 ) : null}
                 <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2 self-end sm:self-auto">
                   {devEditorEnabled ? (
-                    <button
-                      type="button"
-                      onClick={() => setDevSourceMode((prev) => !prev)}
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded border px-3 py-1.5 text-sm transition-colors',
-                        devSourceMode
-                          ? 'border-primary/60 bg-primary/15 text-foreground'
-                          : 'border-border bg-card text-foreground hover:bg-muted',
-                      )}
-                      title="仅在开发模式可用：编辑当前 Markdown 源文件"
-                    >
-                      <Code2 className="size-4 shrink-0 opacity-90" />
-                      <span>{devSourceMode ? '预览' : '源码'}</span>
-                    </button>
+                    <>
+                      <div ref={ideOpenMenuRef} className="relative">
+                        <div className="inline-flex overflow-hidden rounded border border-border bg-card text-sm text-foreground">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await openMarkdownInEditor(activePost.meta.sourcePath, ideOpenAction)
+                              } catch (e) {
+                                console.error(e)
+                                window.alert(
+                                  ideOpenAction === 'vscode'
+                                    ? '无法在 VS Code 中打开：请确认使用本地开发服务器（bun run dev），且已安装 VS Code。'
+                                    : '无法在 Cursor 中打开：请确认使用本地开发服务器（bun run dev），且已安装 Cursor。',
+                                )
+                              }
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 hover:bg-muted"
+                            title={
+                              ideOpenAction === 'vscode'
+                                ? '在 VS Code 中打开当前 Markdown（需本机已安装）'
+                                : '在 Cursor 中打开当前文件（需本机已安装）'
+                            }
+                          >
+                            {ideOpenAction === 'vscode' ? (
+                              <VsCodeBrandIcon className="size-4 shrink-0 opacity-90" />
+                            ) : (
+                              <CursorBrandIcon className="size-4 shrink-0 opacity-90" />
+                            )}
+                            <span className="whitespace-nowrap">
+                              {ideOpenAction === 'vscode' ? '用 VS Code 打开' : '用 Cursor 打开'}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIdeOpenMenuOpen((prev) => !prev)}
+                            className="inline-flex items-center border-l border-border px-2 hover:bg-muted"
+                            aria-haspopup="menu"
+                            aria-expanded={ideOpenMenuOpen}
+                            aria-label="选择外部编辑器"
+                          >
+                            <ChevronDown className="size-4 shrink-0 opacity-80" />
+                          </button>
+                        </div>
+                        {ideOpenMenuOpen ? (
+                          <div
+                            role="menu"
+                            className="absolute top-[calc(100%+6px)] right-0 z-20 min-w-[200px] rounded-md border border-border bg-popover p-1 shadow-lg"
+                          >
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setIdeOpenAction('vscode')
+                                setIdeOpenMenuOpen(false)
+                              }}
+                              className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-foreground hover:bg-muted"
+                            >
+                              <VsCodeBrandIcon className="size-3.5 shrink-0 opacity-90" />
+                              <span>VS Code</span>
+                              {ideOpenAction === 'vscode' ? (
+                                <Check className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+                              ) : null}
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setIdeOpenAction('cursor')
+                                setIdeOpenMenuOpen(false)
+                              }}
+                              className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-foreground hover:bg-muted"
+                            >
+                              <CursorBrandIcon className="size-3.5 shrink-0 opacity-90" />
+                              <span>Cursor</span>
+                              {ideOpenAction === 'cursor' ? (
+                                <Check className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+                              ) : null}
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDevSourceMode((prev) => !prev)}
+                        className={cn(
+                          'inline-flex items-center gap-1.5 rounded border px-3 py-1.5 text-sm transition-colors',
+                          devSourceMode
+                            ? 'border-primary/60 bg-primary/15 text-foreground'
+                            : 'border-border bg-card text-foreground hover:bg-muted',
+                        )}
+                        title="仅在开发模式可用：左侧编辑源码，右侧实时预览；点此回到仅预览"
+                      >
+                        <Code2 className="size-4 shrink-0 opacity-90" />
+                        <span>{devSourceMode ? '预览' : '源码'}</span>
+                      </button>
+                    </>
                   ) : null}
                   {currentHashid ? (
                   <div ref={shareMenuRef} className="relative hidden sm:block">
@@ -1093,7 +1234,12 @@ export default function BlogListPage({
               </div>
             </div>
           ) : null}
-          <div className="blog-main-inner">
+          <div
+            className={cn(
+              'blog-main-inner',
+              devSourceMode && devEditorEnabled && 'blog-main-inner-dev-editor-wide',
+            )}
+          >
             <div key={currentHashid ?? 'empty'} className="blog-content-fade-enter">
               {activePost ? (
                 <>
@@ -1124,20 +1270,141 @@ export default function BlogListPage({
                 </header>
 
                 {devSourceMode && devEditorEnabled ? (
-                  <div key={activePost.meta.hashid} ref={contentRef} className="space-y-3">
-                    <textarea
-                      value={devDraftRaw}
-                      onChange={(e) => setDevDraftRaw(e.target.value)}
-                      onKeyDown={(e) => {
-                        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                          e.preventDefault()
-                          void saveDevDraftToDisk()
-                        }
-                      }}
-                      className="min-h-[min(70vh,720px)] w-full resize-y rounded-lg border border-border bg-background p-3 font-mono text-[13px] leading-relaxed text-foreground"
-                      spellCheck={false}
-                      aria-label="Markdown 源码"
-                    />
+                  <div key={activePost.meta.hashid} className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-border bg-muted/35 px-3 py-2 text-sm text-foreground">
+                      <div className="flex items-center gap-2">
+                        <span id="dev-md-vim-label" className="text-muted-foreground">
+                          Vim 键位
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-labelledby="dev-md-vim-label"
+                          aria-checked={devMdEditorPrefs.vimEnabled}
+                          onClick={() => updateDevMdEditorPrefs({ vimEnabled: !devMdEditorPrefs.vimEnabled })}
+                          className={cn(
+                            'relative h-6 w-10 shrink-0 rounded-full border transition-colors',
+                            devMdEditorPrefs.vimEnabled
+                              ? 'border-primary/50 bg-primary/25'
+                              : 'border-border bg-card',
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'absolute top-0.5 left-0.5 size-5 rounded-full bg-background shadow-sm transition-transform',
+                              devMdEditorPrefs.vimEnabled && 'translate-x-4',
+                            )}
+                            aria-hidden
+                          />
+                          <span className="sr-only">{devMdEditorPrefs.vimEnabled ? '已开启' : '已关闭'}</span>
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span id="dev-md-preview-label" className="text-muted-foreground">
+                          实时预览
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-labelledby="dev-md-preview-label"
+                          aria-checked={devMdEditorPrefs.livePreviewEnabled}
+                          onClick={() =>
+                            updateDevMdEditorPrefs({ livePreviewEnabled: !devMdEditorPrefs.livePreviewEnabled })
+                          }
+                          className={cn(
+                            'relative h-6 w-10 shrink-0 rounded-full border transition-colors',
+                            devMdEditorPrefs.livePreviewEnabled
+                              ? 'border-primary/50 bg-primary/25'
+                              : 'border-border bg-card',
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'absolute top-0.5 left-0.5 size-5 rounded-full bg-background shadow-sm transition-transform',
+                              devMdEditorPrefs.livePreviewEnabled && 'translate-x-4',
+                            )}
+                            aria-hidden
+                          />
+                          <span className="sr-only">
+                            {devMdEditorPrefs.livePreviewEnabled ? '右侧预览已开启' : '右侧预览已关闭'}
+                          </span>
+                        </button>
+                      </div>
+                      <label className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[280px]">
+                        <span className="shrink-0 text-muted-foreground">字体</span>
+                        <select
+                          value={devMdEditorPrefs.fontId}
+                          onChange={(e) => {
+                            const id = e.target.value
+                            if (BLOG_DEV_MD_EDITOR_FONT_OPTIONS.some((o) => o.id === id)) {
+                              updateDevMdEditorPrefs({ fontId: id as BlogDevMdEditorFontId })
+                            }
+                          }}
+                          className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-sm text-foreground"
+                        >
+                          {BLOG_DEV_MD_EDITOR_FONT_OPTIONS.map((opt) => (
+                            <option key={opt.id} value={opt.id}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <div
+                      className={cn(
+                        'grid min-h-0 grid-cols-1 gap-3 lg:grid-rows-1 lg:gap-4 lg:items-stretch',
+                        devMdEditorPrefs.livePreviewEnabled && 'lg:grid-cols-2',
+                      )}
+                    >
+                      <div className="flex min-h-0 min-w-0 flex-col gap-1">
+                        <p className="m-0 text-xs font-medium text-muted-foreground">Markdown 源码</p>
+                        <BlogDevCodemirrorMarkdown
+                          editorKey={activePost.meta.hashid}
+                          value={devDraftRaw}
+                          onChange={setDevDraftRaw}
+                          onSaveShortcut={() => void saveDevDraftToDisk()}
+                          vimKeybindings={devMdEditorPrefs.vimEnabled}
+                          fontFamily={fontFamilyForBlogDevEditor(devMdEditorPrefs.fontId)}
+                          className={cn(
+                            'min-h-[min(42vh,400px)] min-w-0 flex-1',
+                            devMdEditorPrefs.livePreviewEnabled
+                              ? 'lg:min-h-[min(62vh,620px)]'
+                              : 'lg:min-h-[min(70vh,720px)]',
+                          )}
+                        />
+                        {!devMdEditorPrefs.livePreviewEnabled ? (
+                          <div
+                            ref={contentRef}
+                            className="pointer-events-none h-0 w-0 overflow-hidden opacity-0"
+                            aria-hidden
+                          />
+                        ) : null}
+                      </div>
+                      {devMdEditorPrefs.livePreviewEnabled ? (
+                        <div ref={contentRef} className="flex min-h-0 min-w-0 flex-col gap-1">
+                          <p className="m-0 text-xs font-medium text-muted-foreground">实时预览</p>
+                          <div className="blog-article-content max-w-none prose-pre:my-0 min-h-[min(42vh,400px)] flex-1 overflow-y-auto overscroll-contain rounded-lg border border-border bg-background px-3 py-2 sm:px-4 lg:min-h-[min(62vh,620px)]">
+                            {devLivePreviewMarkdown.trim() ? (
+                              <Streamdown
+                                allowedTags={streamdownMarkdownAllowedTags}
+                                linkSafety={{ enabled: false }}
+                                key={`${activePost.meta.hashid}-live`}
+                                mode="static"
+                                plugins={{ code, cjk }}
+                                rehypePlugins={streamdownRehypePlugins}
+                                controls={{ code: { download: false } }}
+                              >
+                                {devLivePreviewMarkdown}
+                              </Streamdown>
+                            ) : (
+                              <p className="py-10 text-center text-sm text-muted-foreground">
+                                暂无正文可预览（空文件或仅有 frontmatter）
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                       <button
                         type="button"
@@ -1157,7 +1424,9 @@ export default function BlogListPage({
                           ? '已保存'
                           : devSaveState === 'error'
                             ? '保存失败，请查看控制台'
-                            : '⌘S / Ctrl+S 快捷保存'}
+                            : devMdEditorPrefs.vimEnabled
+                              ? '⌘S / Ctrl+S 保存 · Vim：插入模式下 jk 退回普通模式'
+                              : '⌘S / Ctrl+S 快捷保存'}
                       </span>
                     </div>
                   </div>
