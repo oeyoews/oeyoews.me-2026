@@ -1,9 +1,28 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useRouter } from '@tanstack/react-router'
 import { Streamdown } from 'streamdown'
 import { createCodePlugin } from '@streamdown/code'
 import { createCjkPlugin } from '@streamdown/cjk'
-import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, Copy, Download, ExternalLink, FileText, Link2, ListTree, Lock, PanelLeftOpen, Quote, SearchX, X } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  Code2,
+  Copy,
+  Download,
+  ExternalLink,
+  FileText,
+  Link2,
+  ListTree,
+  Loader2,
+  Lock,
+  PanelLeftOpen,
+  Quote,
+  SearchX,
+  X,
+} from 'lucide-react'
 import type { BlogPost, BlogPostMeta, BlogTreeItem } from '../blog/posts'
 import { encodeShareToken } from '../blog/share-id'
 import BlogFileTree from './blog-file-tree'
@@ -219,6 +238,7 @@ export default function BlogListPage({
   const LEFT_SIDEBAR_MAX_WIDTH = 520
   const LEFT_SIDEBAR_DEFAULT_WIDTH = 300
   const navigate = useNavigate()
+  const router = useRouter()
   const contentRef = useRef<HTMLDivElement>(null)
   const mainScrollRef = useRef<HTMLElement | null>(null)
   const tocClickLockUntilRef = useRef(0)
@@ -247,6 +267,9 @@ export default function BlogListPage({
   const [shareState, setShareState] = useState<'idle' | 'copied-link' | 'copied-article' | 'failed'>('idle')
   const [sharePassword, setSharePassword] = useState('')
   const [shareStreamEnabled, setShareStreamEnabled] = useState(false)
+  const [devSourceMode, setDevSourceMode] = useState(false)
+  const [devDraftRaw, setDevDraftRaw] = useState('')
+  const [devSaveState, setDevSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const shareResetTimerRef = useRef<number | null>(null)
   const shareMenuRef = useRef<HTMLDivElement>(null)
   const leftPaneEntries = useMemo(() => buildKeyboardNavEntries(treeItems), [treeItems])
@@ -273,6 +296,7 @@ export default function BlogListPage({
       ? orderedPostsByTree[currentPostIndex + 1]
       : undefined
   const currentHashid = activePost?.meta.hashid
+  const devEditorEnabled = import.meta.env.DEV && activePost?.raw !== undefined
   const hasPostContent = Boolean(activePost?.content.trim())
   const tocIds = useMemo(() => toc.map((item) => item.id), [toc])
   const mainGridStyle = useMemo(
@@ -413,6 +437,30 @@ export default function BlogListPage({
     document.body.removeChild(anchor)
   }
 
+  const saveDevDraftToDisk = async () => {
+    if (!activePost || !devEditorEnabled) return
+    setDevSaveState('saving')
+    try {
+      const res = await fetch(withBaseUrl('__dev/api/blog-md'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourcePath: activePost.meta.sourcePath, raw: devDraftRaw }),
+      })
+      if (!res.ok) {
+        const detail = await res.text().catch(() => res.statusText)
+        throw new Error(detail || res.statusText)
+      }
+      await new Promise((r) => window.setTimeout(r, 80))
+      await router.invalidate()
+      setDevSaveState('saved')
+      window.setTimeout(() => setDevSaveState('idle'), 1400)
+    } catch (e) {
+      console.error(e)
+      setDevSaveState('error')
+      window.setTimeout(() => setDevSaveState('idle'), 2200)
+    }
+  }
+
   const runShareAction = async () => {
     if (shareAction === 'open-new-tab') {
       openCurrentInNewTab()
@@ -428,6 +476,11 @@ export default function BlogListPage({
     }
     downloadCurrentArticle()
   }
+
+  useEffect(() => {
+    if (!devSourceMode || activePost?.raw === undefined) return
+    setDevDraftRaw(activePost.raw)
+  }, [activePost?.meta.hashid, activePost?.raw, devSourceMode])
 
   useEffect(() => {
     if (!activePost) {
@@ -882,8 +935,25 @@ export default function BlogListPage({
                     {activePost.meta.title}
                   </h1>
                 ) : null}
-                {currentHashid ? (
-                  <div ref={shareMenuRef} className="relative self-end hidden sm:ml-auto sm:block sm:self-auto">
+                <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2 self-end sm:self-auto">
+                  {devEditorEnabled ? (
+                    <button
+                      type="button"
+                      onClick={() => setDevSourceMode((prev) => !prev)}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded border px-3 py-1.5 text-sm transition-colors',
+                        devSourceMode
+                          ? 'border-primary/60 bg-primary/15 text-foreground'
+                          : 'border-border bg-card text-foreground hover:bg-muted',
+                      )}
+                      title="仅在开发模式可用：编辑当前 Markdown 源文件"
+                    >
+                      <Code2 className="size-4 shrink-0 opacity-90" />
+                      <span>{devSourceMode ? '预览' : '源码'}</span>
+                    </button>
+                  ) : null}
+                  {currentHashid ? (
+                  <div ref={shareMenuRef} className="relative hidden sm:block">
                     <div className="inline-flex overflow-hidden rounded border border-border bg-card text-sm text-foreground">
                       <button
                         type="button"
@@ -1018,7 +1088,8 @@ export default function BlogListPage({
                       </div>
                     ) : null}
                   </div>
-                ) : null}
+                  ) : null}
+                </div>
               </div>
             </div>
           ) : null}
@@ -1052,7 +1123,45 @@ export default function BlogListPage({
                   ) : null}
                 </header>
 
-                {hasPostContent ? (
+                {devSourceMode && devEditorEnabled ? (
+                  <div key={activePost.meta.hashid} ref={contentRef} className="space-y-3">
+                    <textarea
+                      value={devDraftRaw}
+                      onChange={(e) => setDevDraftRaw(e.target.value)}
+                      onKeyDown={(e) => {
+                        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                          e.preventDefault()
+                          void saveDevDraftToDisk()
+                        }
+                      }}
+                      className="min-h-[min(70vh,720px)] w-full resize-y rounded-lg border border-border bg-background p-3 font-mono text-[13px] leading-relaxed text-foreground"
+                      spellCheck={false}
+                      aria-label="Markdown 源码"
+                    />
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                      <button
+                        type="button"
+                        onClick={() => void saveDevDraftToDisk()}
+                        disabled={devSaveState === 'saving'}
+                        className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:pointer-events-none disabled:opacity-60"
+                      >
+                        {devSaveState === 'saving' ? (
+                          <Loader2 className="size-3.5 shrink-0 animate-spin" />
+                        ) : (
+                          <Check className="size-3.5 shrink-0 opacity-70" />
+                        )}
+                        保存到磁盘
+                      </button>
+                      <span>
+                        {devSaveState === 'saved'
+                          ? '已保存'
+                          : devSaveState === 'error'
+                            ? '保存失败，请查看控制台'
+                            : '⌘S / Ctrl+S 快捷保存'}
+                      </span>
+                    </div>
+                  </div>
+                ) : hasPostContent ? (
                   <div
                     key={activePost.meta.hashid}
                     ref={contentRef}

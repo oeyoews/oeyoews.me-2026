@@ -14,6 +14,8 @@ export type BlogPostMeta = {
 export type BlogPost = {
   meta: BlogPostMeta
   content: string
+  /** Dev only: full `.md` file (frontmatter + body) for editing in the browser */
+  raw?: string
 }
 
 export type BlogTreeItem = {
@@ -260,7 +262,11 @@ const parsedPosts = Object.entries(rawPosts).map(([path, raw]) => {
   }
   const content = rewriteLocalImageUrls(fm.content.trim(), relativeContentPath, imageUrlBySourcePath)
 
-  return { meta, content } satisfies BlogPost
+  return {
+    meta,
+    content,
+    ...(import.meta.env.DEV ? { raw } : {}),
+  } satisfies BlogPost
 }).filter((item): item is BlogPost => Boolean(item))
 
 export const allPosts: BlogPostMeta[] = parsedPosts.map((p) => p.meta).sort(compareByDateDesc)
