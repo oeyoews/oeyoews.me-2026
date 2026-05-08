@@ -1,0 +1,36 @@
+---
+description: 本项目使用 Bun 作为包管理与运行时
+alwaysApply: true
+---
+
+# Bun
+
+本仓库以 **Bun** 为默认工具链。代理在终端、脚本说明与 CI 建议中应优先使用 Bun，而非 npm / yarn / pnpm。
+
+## 命令约定
+
+| 场景 | 使用 |
+|------|------|
+| 安装依赖 | `bun install` |
+| 运行 package.json 脚本 | `bun run <script>`（如 `bun run dev`、`bun run test`、`bun run build`） |
+| 一次性执行包内 CLI | `bunx <pkg>`（等价于 npx，优先用 bunx） |
+| 直接执行 TypeScript/JS | `bun <file.ts>` 或 `bun run` 指向的脚本 |
+
+## 注意
+
+- 锁文件为 `bun.lock`；不要引入或建议生成 `package-lock.json` / `pnpm-lock.yaml`，除非用户明确要求迁移工具链。
+- 文档或注释中的示例命令应写为 `bun ...`，避免默认写成 `npm i` / `npx`。
+
+## 反例
+
+```bash
+# ❌ 非本项目默认
+npm install
+pnpm test
+npx vitest
+
+# ✅ 推荐
+bun install
+bun run test
+bunx vitest
+```
