@@ -672,24 +672,6 @@
     color: #fecdd3;
   }
 
-  /* 开发模式：侧栏「新建」按钮（与资源管理器图标一致） */
-  .explorer-dev-new-btn {
-    @apply relative inline-flex size-7 items-center justify-center rounded border border-transparent text-[#c9d7fb] transition-colors;
-  }
-
-  .explorer-dev-new-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: #3a4a73;
-  }
-
-  .explorer-dev-new-btn-icon {
-    @apply relative inline-flex size-4 shrink-0 items-center justify-center;
-  }
-
-  .explorer-dev-new-btn-plus {
-    @apply pointer-events-none absolute -bottom-px -right-px flex size-3.5 items-center justify-center rounded-full border border-[#2f3750] bg-[#1a2233];
-  }
-
   .blog-fs-ctx-menu-sep {
     margin: 0.25rem 0;
     height: 1px;
@@ -866,10 +848,6 @@
     display: none;
     width: 0;
     height: 0;
-  }
-
-  .command-palette-list {
-    scrollbar-gutter: stable;
   }
 }
 

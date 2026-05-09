@@ -353,7 +353,6 @@ export default function BlogListPage({
   /** 偏好与布局稳定后再启用 grid / 资源管理器宽度过渡，避免水合或存储回填触发「假关闭」动画 */
   const [sidebarLayoutTransitionReady, setSidebarLayoutTransitionReady] = useState(false)
   const [toggleDirectoryRequest, setToggleDirectoryRequest] = useState<{ path: string; nonce: number }>()
-  const [devFsToolbarParentDir, setDevFsToolbarParentDir] = useState('')
   const devFsEnabled = import.meta.env.DEV
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
   const [shareAction, setShareAction] = useState<'copy-link' | 'copy-article' | 'download-md' | 'open-new-tab'>('copy-link')
@@ -838,12 +837,6 @@ export default function BlogListPage({
     setDevMdEditorPrefs(readBlogDevMdEditorPrefs())
   }, [])
 
-  useEffect(() => {
-    if (!devFsEnabled || !activePost) return
-    const sp = activePost.meta.sourcePath.replace(/\\/g, '/')
-    setDevFsToolbarParentDir(sp.includes('/') ? sp.slice(0, sp.lastIndexOf('/')) : '')
-  }, [activePost?.meta.hashid, devFsEnabled])
-
   useLayoutEffect(() => {
     const p = readBlogSidebarUiPrefs()
     setSidebarsHidden(p.sidebarsHidden)
@@ -1279,8 +1272,6 @@ export default function BlogListPage({
                   onSelectFile={closeMobileTree}
                   linkSearch={devSourceMode ? { source: 1 } : undefined}
                   devFsEnabled={devFsEnabled}
-                  devFsToolbarParentDir={devFsToolbarParentDir}
-                  onDevFsToolbarParentChange={setDevFsToolbarParentDir}
                   onDevFsCreateMarkdown={handleDevFsCreateMarkdown}
                   onDevFsCreateFolder={handleDevFsCreateFolder}
                   onDevFsRename={handleDevFsRename}
@@ -1336,8 +1327,6 @@ export default function BlogListPage({
                   onSelectFile={() => setShowMobileTree(false)}
                   linkSearch={devSourceMode ? { source: 1 } : undefined}
                   devFsEnabled={devFsEnabled}
-                  devFsToolbarParentDir={devFsToolbarParentDir}
-                  onDevFsToolbarParentChange={setDevFsToolbarParentDir}
                   onDevFsCreateMarkdown={handleDevFsCreateMarkdown}
                   onDevFsCreateFolder={handleDevFsCreateFolder}
                   onDevFsRename={handleDevFsRename}

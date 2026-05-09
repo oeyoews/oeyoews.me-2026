@@ -1,7 +1,6 @@
 import { HeadContent, Link, Scripts, createRootRoute, useRouterState } from '@tanstack/react-router'
 import { SearchX } from 'lucide-react'
 import { useEffect, useMemo, useState, type SubmitEvent } from 'react'
-import CommandPalette from '../components/command-palette'
 import { clearAuthed, isAuthed, setAuthed, verifyPassword } from '../lib/auth'
 import { withBaseUrl } from '../lib/base-url'
 
@@ -74,7 +73,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             <AuthGate>{children}</AuthGate>
           </div>
         </div>
-        <CommandPalette />
         <Scripts />
       </body>
     </html>

@@ -1,11 +1,10 @@
-import { Files, LogOut, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react'
+import { Files, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const OPEN_COMMAND_PALETTE_EVENT = 'open-command-palette'
 const LOGOUT_EVENT = 'app-logout'
 
 type VscodeActivityBarProps = {
-  active?: 'files' | 'search' | 'settings'
+  active?: 'files' | 'settings'
   sidebarsHidden?: boolean
   onToggleSidebars?: () => void
 }
@@ -25,15 +24,6 @@ export default function VscodeActivityBar({
           title="Files"
         >
           <Files className="size-4" />
-        </button>
-        <button
-          type="button"
-          className={cn('vscode-activity-button', active === 'search' && 'vscode-activity-button-active')}
-          aria-label="Search"
-          title="Search (Ctrl/Cmd + K)"
-          onClick={() => window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT))}
-        >
-          <Search className="size-4" />
         </button>
         <button
           type="button"

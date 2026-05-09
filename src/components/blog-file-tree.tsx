@@ -13,7 +13,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { Link } from '@tanstack/react-router'
-import { ChevronRight, GripVertical, Monitor, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
+import { ChevronRight, Monitor, Pencil, Sparkles, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { blogUiConfig } from '@/blog/config'
 import { withBaseUrl } from '@/lib/base-url'
@@ -40,8 +40,6 @@ type BlogFileTreeProps = {
   onSelectFile?: () => void
   linkSearch?: BlogDevSourceSearch
   devFsEnabled?: boolean
-  devFsToolbarParentDir?: string
-  onDevFsToolbarParentChange?: (parentRelativeDir: string) => void
   onDevFsCreateMarkdown?: (parentRelativeDir: string) => void | Promise<void>
   onDevFsCreateFolder?: (parentRelativeDir: string) => void | Promise<void>
   onDevFsRename?: (ctx: BlogFileTreeDevFsContext) => void | Promise<void>
@@ -151,28 +149,6 @@ function parentDirOfTreePath(treePath: string) {
   return parts.slice(0, -1).join('/')
 }
 
-function DevFsNewToolbarIcon({
-  variant,
-  onClick,
-  label,
-}: {
-  variant: 'markdown' | 'folder'
-  onClick: () => void
-  label: string
-}) {
-  const src = variant === 'markdown' ? '/file_type_markdown.svg' : '/default_folder.svg'
-  return (
-    <button type="button" className="explorer-dev-new-btn" title={label} aria-label={label} onClick={onClick}>
-      <span className="explorer-dev-new-btn-icon">
-        <img src={withBaseUrl(src)} alt="" className="size-4" width={16} height={16} draggable={false} />
-        <span className="explorer-dev-new-btn-plus" aria-hidden="true">
-          <Plus className="size-2.5 text-emerald-400" strokeWidth={2.5} />
-        </span>
-      </span>
-    </button>
-  )
-}
-
 type DropHighlightData = { toParentRelativeDir: string }
 
 function dragPayloadFromActiveData(data: unknown): BlogFileTreeDevFsContext | null {
@@ -184,7 +160,6 @@ function dragPayloadFromActiveData(data: unknown): BlogFileTreeDevFsContext | nu
 function ExplorerFsContextMenu({
   enabled,
   fsCtx,
-  onToolbarParent,
   onCreateMarkdown,
   onCreateFolder,
   onRename,
@@ -193,7 +168,6 @@ function ExplorerFsContextMenu({
 }: {
   enabled: boolean
   fsCtx: BlogFileTreeDevFsContext
-  onToolbarParent?: (parentRelativeDir: string) => void
   onCreateMarkdown?: (parentRelativeDir: string) => void | Promise<void>
   onCreateFolder?: (parentRelativeDir: string) => void | Promise<void>
   onRename?: () => void
@@ -209,11 +183,7 @@ function ExplorerFsContextMenu({
   const showEdit = Boolean(onRename || onDelete)
 
   return (
-    <ContextMenu.Root
-      onOpenChange={(open) => {
-        if (open) onToolbarParent?.(parent)
-      }}
-    >
+    <ContextMenu.Root>
       <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
       <ContextMenu.Portal>
         <ContextMenu.Content className="blog-fs-ctx-menu" collisionPadding={12}>
@@ -257,32 +227,6 @@ function ExplorerFsContextMenu({
   )
 }
 
-function RootDropZone({
-  highlight,
-  onToolbarParent,
-}: {
-  highlight: boolean
-  onToolbarParent?: () => void
-}) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: 'drop-root',
-    data: { toParentRelativeDir: '' } satisfies DropHighlightData,
-  })
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        'mb-1 rounded border border-dashed border-transparent px-1 py-0.5 text-[10px] text-[#8b9fc9] transition-colors',
-        (highlight || isOver) && 'explorer-row-drop-target border-[#4a5878]',
-      )}
-      onPointerDown={() => onToolbarParent?.()}
-    >
-      拖到此处可移到 content 根目录
-    </div>
-  )
-}
-
 function NodeItemPlain({
   node,
   currentHashid,
@@ -296,7 +240,6 @@ function NodeItemPlain({
   devFsEnabled,
   ctxMenuEnabled,
   sourcePathByHashid,
-  onDevFsToolbarParentChange,
   onDevFsCreateMarkdown,
   onDevFsCreateFolder,
   onDevFsRename,
@@ -314,7 +257,6 @@ function NodeItemPlain({
   devFsEnabled?: boolean
   ctxMenuEnabled: boolean
   sourcePathByHashid: Map<string, string>
-  onDevFsToolbarParentChange?: (parentRelativeDir: string) => void
   onDevFsCreateMarkdown?: (parentRelativeDir: string) => void | Promise<void>
   onDevFsCreateFolder?: (parentRelativeDir: string) => void | Promise<void>
   onDevFsRename?: (ctx: BlogFileTreeDevFsContext) => void | Promise<void>
@@ -359,7 +301,6 @@ function NodeItemPlain({
         <ExplorerFsContextMenu
           enabled={Boolean(devFsEnabled && ctxMenuEnabled && sourcePath)}
           fsCtx={fsCtx}
-          onToolbarParent={onDevFsToolbarParentChange}
           onCreateMarkdown={onDevFsCreateMarkdown}
           onCreateFolder={onDevFsCreateFolder}
           onRename={onDevFsRename ? () => void onDevFsRename(fsCtx) : undefined}
@@ -407,7 +348,6 @@ function NodeItemPlain({
       <ExplorerFsContextMenu
         enabled={Boolean(devFsEnabled && ctxMenuEnabled)}
         fsCtx={fsCtx}
-        onToolbarParent={onDevFsToolbarParentChange}
         onCreateMarkdown={onDevFsCreateMarkdown}
         onCreateFolder={onDevFsCreateFolder}
         onRename={onDevFsRename ? () => void onDevFsRename(fsCtx) : undefined}
@@ -432,7 +372,6 @@ function NodeItemPlain({
               devFsEnabled={devFsEnabled}
               ctxMenuEnabled={ctxMenuEnabled}
               sourcePathByHashid={sourcePathByHashid}
-              onDevFsToolbarParentChange={onDevFsToolbarParentChange}
               onDevFsCreateMarkdown={onDevFsCreateMarkdown}
               onDevFsCreateFolder={onDevFsCreateFolder}
               onDevFsRename={onDevFsRename}
@@ -459,7 +398,6 @@ function NodeItemDnd({
   ctxMenuEnabled,
   sourcePathByHashid,
   highlightDropParent,
-  onDevFsToolbarParentChange,
   onDevFsCreateMarkdown,
   onDevFsCreateFolder,
   onDevFsRename,
@@ -478,7 +416,6 @@ function NodeItemDnd({
   ctxMenuEnabled: boolean
   sourcePathByHashid: Map<string, string>
   highlightDropParent: string | null
-  onDevFsToolbarParentChange?: (parentRelativeDir: string) => void
   onDevFsCreateMarkdown?: (parentRelativeDir: string) => void | Promise<void>
   onDevFsCreateFolder?: (parentRelativeDir: string) => void | Promise<void>
   onDevFsRename?: (ctx: BlogFileTreeDevFsContext) => void | Promise<void>
@@ -512,9 +449,14 @@ function NodeItemDnd({
 
     const row = (
       <div
-        ref={setDropRef}
+        ref={(el) => {
+          setDropRef(el)
+          setDragRef(el)
+        }}
+        {...attributes}
+        {...listeners}
         className={cn(
-          'explorer-row flex touch-none',
+          'explorer-row flex touch-none cursor-grab active:cursor-grabbing',
           isActive ? 'explorer-row-active font-medium' : 'explorer-row-muted',
           isFocused && !isActive && 'explorer-row-focused',
           isFocusedPath && !isActive && 'explorer-row-focused',
@@ -522,17 +464,6 @@ function NodeItemDnd({
           isDragging && 'opacity-60',
         )}
       >
-        <button
-          ref={setDragRef}
-          type="button"
-          {...attributes}
-          {...listeners}
-          className="inline-flex shrink-0 cursor-grab rounded p-0.5 text-[#6b7a9e] hover:bg-white/5 hover:text-[#9dabc9] active:cursor-grabbing"
-          aria-label="拖动以移动"
-          onClick={(e) => e.preventDefault()}
-        >
-          <GripVertical className="size-3.5" />
-        </button>
         <Link
           to="/blog/$hashid"
           params={{ hashid: node.hashid }}
@@ -558,7 +489,6 @@ function NodeItemDnd({
         <ExplorerFsContextMenu
           enabled={Boolean(devFsEnabled && ctxMenuEnabled && sourcePath)}
           fsCtx={fsCtx}
-          onToolbarParent={onDevFsToolbarParentChange}
           onCreateMarkdown={onDevFsCreateMarkdown}
           onCreateFolder={onDevFsCreateFolder}
           onRename={onDevFsRename ? () => void onDevFsRename(fsCtx) : undefined}
@@ -588,25 +518,19 @@ function NodeItemDnd({
 
   const folderBtn = (
     <div
-      ref={setDropRef}
+      ref={(el) => {
+        setDropRef(el)
+        setDragRef(el)
+      }}
+      {...attributes}
+      {...listeners}
       className={cn(
-        'explorer-row explorer-row-muted group flex w-full touch-none text-left',
+        'explorer-row explorer-row-muted group flex w-full cursor-grab touch-none text-left active:cursor-grabbing',
         isFocusedPath && 'explorer-row-focused',
         dropHighlight && 'explorer-row-drop-target',
         isDragging && 'opacity-60',
       )}
     >
-      <button
-        ref={setDragRef}
-        type="button"
-        {...attributes}
-        {...listeners}
-        className="inline-flex shrink-0 cursor-grab rounded p-0.5 text-[#6b7a9e] hover:bg-white/5 hover:text-[#9dabc9] active:cursor-grabbing"
-        aria-label="拖动以移动"
-        onClick={(e) => e.preventDefault()}
-      >
-        <GripVertical className="size-3.5" />
-      </button>
       <button
         type="button"
         className="flex min-w-0 flex-1 items-center gap-2 text-left"
@@ -638,7 +562,6 @@ function NodeItemDnd({
       <ExplorerFsContextMenu
         enabled={Boolean(devFsEnabled && ctxMenuEnabled)}
         fsCtx={fsCtx}
-        onToolbarParent={onDevFsToolbarParentChange}
         onCreateMarkdown={onDevFsCreateMarkdown}
         onCreateFolder={onDevFsCreateFolder}
         onRename={onDevFsRename ? () => void onDevFsRename(fsCtx) : undefined}
@@ -664,7 +587,6 @@ function NodeItemDnd({
               ctxMenuEnabled={ctxMenuEnabled}
               sourcePathByHashid={sourcePathByHashid}
               highlightDropParent={highlightDropParent}
-              onDevFsToolbarParentChange={onDevFsToolbarParentChange}
               onDevFsCreateMarkdown={onDevFsCreateMarkdown}
               onDevFsCreateFolder={onDevFsCreateFolder}
               onDevFsRename={onDevFsRename}
@@ -687,8 +609,6 @@ export default function BlogFileTree({
   onSelectFile,
   linkSearch,
   devFsEnabled = false,
-  devFsToolbarParentDir = '',
-  onDevFsToolbarParentChange,
   onDevFsCreateMarkdown,
   onDevFsCreateFolder,
   onDevFsRename,
@@ -804,7 +724,6 @@ export default function BlogFileTree({
             ctxMenuEnabled={ctxMenuEnabled}
             sourcePathByHashid={sourcePathByHashid}
             highlightDropParent={highlightDropParent}
-            onDevFsToolbarParentChange={onDevFsToolbarParentChange}
             onDevFsCreateMarkdown={onDevFsCreateMarkdown}
             onDevFsCreateFolder={onDevFsCreateFolder}
             onDevFsRename={onDevFsRename}
@@ -825,7 +744,6 @@ export default function BlogFileTree({
             devFsEnabled={devFsEnabled}
             ctxMenuEnabled={ctxMenuEnabled}
             sourcePathByHashid={sourcePathByHashid}
-            onDevFsToolbarParentChange={onDevFsToolbarParentChange}
             onDevFsCreateMarkdown={onDevFsCreateMarkdown}
             onDevFsCreateFolder={onDevFsCreateFolder}
             onDevFsRename={onDevFsRename}
@@ -836,8 +754,6 @@ export default function BlogFileTree({
     </ul>
   )
 
-  const rootHighlight = highlightDropParent === ''
-
   return (
     <aside className="relative flex h-full max-h-dvh min-h-0 flex-col">
       <p className="explorer-heading flex w-full items-center justify-between gap-2">
@@ -846,24 +762,6 @@ export default function BlogFileTree({
           <span>文件夹</span>
         </span>
         <span className="inline-flex shrink-0 items-center gap-1">
-          {devFsEnabled && (onDevFsCreateMarkdown || onDevFsCreateFolder) ? (
-            <span className="inline-flex items-center gap-0.5 pr-0.5">
-              {onDevFsCreateMarkdown ? (
-                <DevFsNewToolbarIcon
-                  variant="markdown"
-                  label="在此目录新建 Markdown"
-                  onClick={() => void onDevFsCreateMarkdown(devFsToolbarParentDir)}
-                />
-              ) : null}
-              {onDevFsCreateFolder ? (
-                <DevFsNewToolbarIcon
-                  variant="folder"
-                  label="在此目录新建文件夹"
-                  onClick={() => void onDevFsCreateFolder(devFsToolbarParentDir)}
-                />
-              ) : null}
-            </span>
-          ) : null}
           <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#3a4a73] bg-[#24314d] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[#c9d7fb]">
             <Sparkles aria-hidden="true" className="size-3 shrink-0 text-[#8fb3ff]" />
             <span>{blogUiConfig.explorerVersion}</span>
@@ -880,15 +778,10 @@ export default function BlogFileTree({
           onDragEnd={(e) => void handleDragEnd(e)}
           onDragCancel={handleDragCancel}
         >
-          <RootDropZone
-            highlight={rootHighlight}
-            onToolbarParent={() => onDevFsToolbarParentChange?.('')}
-          />
           {treeList}
           <DragOverlay dropAnimation={{ duration: 160, easing: 'cubic-bezier(0.25, 1, 0.5, 1)' }}>
             {dragOverlayLabel ? (
               <div className="blog-fs-drag-overlay">
-                <GripVertical className="size-4 shrink-0 text-[#8fb3ff]" aria-hidden="true" />
                 <span className="truncate">{toLabel(dragOverlayLabel.replace(/\.md$/i, ''))}</span>
               </div>
             ) : null}

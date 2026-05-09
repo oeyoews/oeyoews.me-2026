@@ -33,7 +33,6 @@
     "@tanstack/router-plugin": "^1.167.33",
     "@tanstack/store": "latest",
     "clsx": "latest",
-    "cmdk": "latest",
     "gray-matter": "^4.0.3",
     "hast-util-sanitize": "^5.0.2",
     "highlight.js": "^11.11.1",
