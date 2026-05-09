@@ -1879,7 +1879,7 @@ export default function BlogListPage({
                       {devMdEditorPrefs.livePreviewEnabled ? (
                         <div ref={contentRef} className="flex h-full min-h-0 min-w-0 flex-col gap-1">
                           <p className="m-0 text-xs font-medium text-muted-foreground">实时预览</p>
-                          <div className="blog-article-content max-w-none prose-pre:my-0 flex h-full min-h-[min(42vh,400px)] flex-1 overflow-y-auto overscroll-contain rounded-lg border border-border bg-background px-3 py-2 sm:px-4 lg:min-h-[min(62vh,620px)]">
+                          <div className="blog-article-content max-w-none prose-pre:my-0 flex h-full min-h-[min(42vh,400px)] flex-1 overflow-y-auto rounded-lg border border-border bg-background px-3 py-2 sm:px-4 lg:min-h-[min(62vh,620px)]">
                             {devLivePreviewMarkdown.trim() ? (
                               <Streamdown
                                 allowedTags={streamdownMarkdownAllowedTags}
@@ -2016,7 +2016,7 @@ export default function BlogListPage({
                 <X className="size-3.5 shrink-0" />
               </button>
             </div>
-            <ul className="toc-list min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <ul className="toc-list min-h-0 flex-1 overflow-y-auto">
               {toc.map((item, index) => {
                 const prev = toc[index - 1]
                 const next = toc[index + 1]

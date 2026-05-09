@@ -84,6 +84,54 @@ function editorFontTheme(fontFamily: string) {
 }
 
 /** Markdown 结构与站点色板；代码块内嵌语言仍由 defaultHighlightStyle 着色 */
+/** 将编辑区内「无处可滚」或已到顶/底的滚轮交给外层（如 `.blog-content-columns`），避免嵌套滚动吃掉事件 */
+function scrollWheelForwardExtension() {
+  const EPS = 2
+
+  function nearestVerticalScrollParent(from: HTMLElement | null): HTMLElement | null {
+    let el = from
+    while (el && el !== document.documentElement) {
+      const { overflowY } = window.getComputedStyle(el)
+      if (
+        (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') &&
+        el.scrollHeight > el.clientHeight + EPS
+      ) {
+        return el
+      }
+      el = el.parentElement
+    }
+    return null
+  }
+
+  return EditorView.domEventHandlers({
+    wheel(event, view) {
+      if (event.deltaY === 0) return false
+
+      const scroller = view.scrollDOM
+      const { scrollTop, scrollHeight, clientHeight } = scroller
+      const dy = event.deltaY
+      const hasOverflow = scrollHeight > clientHeight + EPS
+      const atTop = scrollTop <= EPS
+      const atBottom = scrollTop + clientHeight >= scrollHeight - EPS
+
+      const forward =
+        !hasOverflow || (dy < 0 && atTop) || (dy > 0 && atBottom)
+
+      if (!forward) return false
+
+      const host = nearestVerticalScrollParent(scroller.parentElement)
+      if (!host) return false
+
+      const before = host.scrollTop
+      host.scrollTop += dy
+      if (host.scrollTop === before) return false
+
+      event.preventDefault()
+      return true
+    },
+  })
+}
+
 const markdownSyntaxHighlight = HighlightStyle.define([
   { tag: tags.heading, color: 'var(--color-primary)', fontWeight: '700' },
   { tag: tags.quote, color: 'var(--color-muted-foreground)', fontStyle: 'italic' },
@@ -148,6 +196,7 @@ export default function BlogDevCodemirrorMarkdown({
         history(),
         lineNumbers(),
         EditorView.lineWrapping,
+        scrollWheelForwardExtension(),
         editorShellTheme(fontSizePx),
         editorFontTheme(fontFamily),
         keymap.of([indentWithTab]),
