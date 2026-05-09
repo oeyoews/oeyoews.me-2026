@@ -1,13 +1,9 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
-import {
-  defaultHighlightStyle,
-  HighlightStyle,
-  syntaxHighlighting,
-} from '@codemirror/language'
+import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { EditorState, Prec } from '@codemirror/state'
+import { oneDark } from '@codemirror/theme-one-dark'
 import { EditorView, keymap, lineNumbers } from '@codemirror/view'
-import { tags } from '@lezer/highlight'
 import { vim, Vim } from '@replit/codemirror-vim'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 
@@ -35,7 +31,8 @@ export type BlogDevCodemirrorMarkdownProps = {
   fontSizePx?: number
 }
 
-function editorShellTheme(fontSizePx: number) {
+/** 与 One Dark 搭配的布局（字号、伸缩、行高），不着色面板与文本 */
+function editorLayoutTheme(fontSizePx: number) {
   return EditorView.theme(
     {
       '&': {
@@ -50,26 +47,9 @@ function editorShellTheme(fontSizePx: number) {
         minHeight: 0,
         lineHeight: '1.625',
       },
-      '.cm-content': { caretColor: 'var(--color-foreground)', paddingBlock: '12px' },
-      '.cm-gutters': {
-        backgroundColor: 'color-mix(in srgb, var(--color-muted) 88%, transparent)',
-        color: 'var(--color-muted-foreground)',
-        border: 'none',
-        borderRight: '1px solid var(--color-border)',
-      },
-      '.cm-activeLineGutter': { backgroundColor: 'transparent' },
-      '.cm-activeLine': {
-        backgroundColor: 'color-mix(in srgb, var(--color-muted) 45%, transparent)',
-      },
-      '&.cm-focused .cm-cursor': { borderLeftColor: 'var(--color-foreground)' },
-      '&.cm-focused .cm-selectionBackground': {
-        background: 'color-mix(in srgb, var(--color-primary) 28%, transparent) !important',
-      },
-      '.cm-selectionBackground': {
-        background: 'color-mix(in srgb, var(--color-primary) 22%, transparent) !important',
-      },
+      '.cm-content': { paddingBlock: '12px' },
     },
-    { dark: false },
+    { dark: true },
   )
 }
 
@@ -79,11 +59,39 @@ function editorFontTheme(fontFamily: string) {
       '.cm-scroller': { fontFamily },
       '.cm-gutters': { fontFamily },
     },
-    { dark: false },
+    { dark: true },
   )
 }
 
-/** Markdown 结构与站点色板；代码块内嵌语言仍由 defaultHighlightStyle 着色 */
+/**
+ * 覆盖 One Dark 的 `&` / `.cm-gutters` 等（#282c34 / 行号槽）。
+ * 视图会把 `styleModule` facet 收集后 `.concat(base).reverse()` 再挂载；facet 里**更靠前**的模块会**最后**写入样式表、同优先级下生效。
+ * 用 `Prec.highest` 提高该主题的扩展优先级，才能稳定压过同级的 oneDark（单靠 extensions 数组里的先后顺序不可靠）。
+ */
+function blogDevMarkdownAppearanceTheme() {
+  const gutterChrome = {
+    backgroundColor: 'var(--color-card)',
+    color: 'var(--color-muted-foreground)',
+    borderRight: '1px solid var(--color-border)',
+    borderTop: 'none',
+    borderBottom: 'none',
+    borderLeft: 'none',
+  } as const
+
+  return Prec.highest(
+    EditorView.theme(
+      {
+        '&': { backgroundColor: 'var(--color-card)' },
+        '.cm-scroller': { backgroundColor: 'var(--color-card)' },
+        '.cm-gutters': gutterChrome,
+        '.cm-gutter': { backgroundColor: 'transparent' },
+        '.cm-activeLineGutter': { backgroundColor: 'var(--color-muted)' },
+      },
+      { dark: true },
+    ),
+  )
+}
+
 /** 将编辑区内「无处可滚」或已到顶/底的滚轮交给外层（如 `.blog-content-columns`），避免嵌套滚动吃掉事件 */
 function scrollWheelForwardExtension() {
   const EPS = 2
@@ -132,22 +140,6 @@ function scrollWheelForwardExtension() {
   })
 }
 
-const markdownSyntaxHighlight = HighlightStyle.define([
-  { tag: tags.heading, color: 'var(--color-primary)', fontWeight: '700' },
-  { tag: tags.quote, color: 'var(--color-muted-foreground)', fontStyle: 'italic' },
-  { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.strong, fontWeight: '700' },
-  { tag: tags.strikethrough, textDecoration: 'line-through', color: 'var(--color-muted-foreground)' },
-  { tag: tags.link, color: 'var(--color-primary)' },
-  { tag: tags.url, color: 'color-mix(in srgb, var(--color-primary) 72%, var(--color-muted-foreground))' },
-  { tag: tags.monospace, color: 'color-mix(in srgb, var(--color-foreground) 88%, var(--color-primary))' },
-  { tag: tags.meta, color: 'var(--color-muted-foreground)' },
-  { tag: tags.comment, color: 'var(--color-muted-foreground)', fontStyle: 'italic' },
-  { tag: tags.list, color: 'color-mix(in srgb, var(--color-muted-foreground) 90%, var(--color-foreground))' },
-  { tag: tags.punctuation, color: 'color-mix(in srgb, var(--color-muted-foreground) 82%, transparent)' },
-  { tag: tags.processingInstruction, color: 'var(--color-muted-foreground)' },
-])
-
 export default function BlogDevCodemirrorMarkdown({
   editorKey,
   value,
@@ -191,18 +183,19 @@ export default function BlogDevCodemirrorMarkdown({
       doc: valueRef.current,
       extensions: [
         markdown(),
-        syntaxHighlighting(markdownSyntaxHighlight),
+        oneDark,
         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
         history(),
         lineNumbers(),
         EditorView.lineWrapping,
         scrollWheelForwardExtension(),
-        editorShellTheme(fontSizePx),
+        editorLayoutTheme(fontSizePx),
         editorFontTheme(fontFamily),
         keymap.of([indentWithTab]),
         keymap.of(historyKeymap),
         keymap.of(defaultKeymap),
         ...(vimKeybindings ? [vim()] : []),
+        blogDevMarkdownAppearanceTheme(),
         Prec.highest(saveMap),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -235,7 +228,7 @@ export default function BlogDevCodemirrorMarkdown({
     <div
       ref={hostRef}
       className={cn(
-        'blog-dev-codemirror flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-background text-foreground',
+        'blog-dev-codemirror flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card',
         '[&_.cm-editor]:outline-none',
         className,
       )}

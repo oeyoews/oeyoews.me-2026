@@ -1668,31 +1668,34 @@ export default function BlogListPage({
             <div key={currentHashid ?? 'empty'} className="blog-content-fade-enter">
               {activePost ? (
                 <>
-                <header className="mb-6">
-                  {activePost.meta.image ? (
-                    <div className="mb-4 overflow-hidden rounded-lg border border-border bg-muted/30">
-                      <img
-                        src={activePost.meta.image}
-                        alt={activePost.meta.title ? `${activePost.meta.title} 封面` : ''}
-                        className="max-h-[min(420px,50vh)] w-full object-cover"
-                        loading="eager"
-                        decoding="async"
-                      />
-                    </div>
-                  ) : null}
-                  {activePost.meta.date ? (
-                    <p className="mt-3 flex w-full items-center justify-end gap-1.5 text-[12px] text-muted-foreground">
-                      <CalendarDays className="size-3.5 shrink-0" />
-                      <time>{activePost.meta.date}</time>
-                    </p>
-                  ) : null}
-                  {activePost.meta.description ? (
-                    <p className="mt-4 inline-flex w-full items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-[13px] leading-6 text-foreground/80">
-                      <Quote className="mt-1 size-3 shrink-0 text-muted-foreground" />
-                      <span>{activePost.meta.description}</span>
-                    </p>
-                  ) : null}
-                </header>
+                {!devSourceMode &&
+                (activePost.meta.image || activePost.meta.date || activePost.meta.description) ? (
+                  <header className="mb-6">
+                    {activePost.meta.image ? (
+                      <div className="mb-4 overflow-hidden rounded-lg border border-border bg-muted/30">
+                        <img
+                          src={activePost.meta.image}
+                          alt={activePost.meta.title ? `${activePost.meta.title} 封面` : ''}
+                          className="max-h-[min(420px,50vh)] w-full object-cover"
+                          loading="eager"
+                          decoding="async"
+                        />
+                      </div>
+                    ) : null}
+                    {activePost.meta.date ? (
+                      <p className="mt-3 flex w-full items-center justify-end gap-1.5 text-[12px] text-muted-foreground">
+                        <CalendarDays className="size-3.5 shrink-0" />
+                        <time>{activePost.meta.date}</time>
+                      </p>
+                    ) : null}
+                    {activePost.meta.description ? (
+                      <p className="mt-4 inline-flex w-full items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-[13px] leading-6 text-foreground/80">
+                        <Quote className="mt-1 size-3 shrink-0 text-muted-foreground" />
+                        <span>{activePost.meta.description}</span>
+                      </p>
+                    ) : null}
+                  </header>
+                ) : null}
 
                 {devSourceMode && devEditorEnabled ? (
                   <div key={activePost.meta.hashid} className="space-y-3">
