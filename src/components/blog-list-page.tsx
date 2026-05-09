@@ -1356,29 +1356,43 @@ export default function BlogListPage({
                         devMdEditorPrefs.livePreviewEnabled && 'lg:grid-cols-2',
                       )}
                     >
-                      <div className="flex min-h-0 min-w-0 flex-col gap-1">
-                        <p className="m-0 text-xs font-medium text-muted-foreground">Markdown 源码</p>
-                        <BlogDevCodemirrorMarkdown
-                          editorKey={activePost.meta.hashid}
-                          value={devDraftRaw}
-                          onChange={setDevDraftRaw}
-                          onSaveShortcut={() => void saveDevDraftToDisk()}
-                          vimKeybindings={devMdEditorPrefs.vimEnabled}
-                          fontFamily={fontFamilyForBlogDevEditor(devMdEditorPrefs.fontId)}
+                      <div
+                        className={cn(
+                          'min-h-0',
+                          devMdEditorPrefs.livePreviewEnabled
+                            ? 'min-w-0'
+                            : 'col-span-full flex justify-center',
+                        )}
+                      >
+                        <div
                           className={cn(
-                            'min-h-[min(42vh,400px)] min-w-0 flex-1',
-                            devMdEditorPrefs.livePreviewEnabled
-                              ? 'lg:min-h-[min(62vh,620px)]'
-                              : 'lg:min-h-[min(70vh,720px)]',
+                            'flex min-h-0 min-w-0 flex-col gap-1',
+                            !devMdEditorPrefs.livePreviewEnabled && 'w-full max-w-[1100px]',
                           )}
-                        />
-                        {!devMdEditorPrefs.livePreviewEnabled ? (
-                          <div
-                            ref={contentRef}
-                            className="pointer-events-none h-0 w-0 overflow-hidden opacity-0"
-                            aria-hidden
+                        >
+                          <p className="m-0 text-xs font-medium text-muted-foreground">Markdown 源码</p>
+                          <BlogDevCodemirrorMarkdown
+                            editorKey={activePost.meta.hashid}
+                            value={devDraftRaw}
+                            onChange={setDevDraftRaw}
+                            onSaveShortcut={() => void saveDevDraftToDisk()}
+                            vimKeybindings={devMdEditorPrefs.vimEnabled}
+                            fontFamily={fontFamilyForBlogDevEditor(devMdEditorPrefs.fontId)}
+                            className={cn(
+                              'min-h-[min(42vh,400px)] min-w-0 flex-1',
+                              devMdEditorPrefs.livePreviewEnabled
+                                ? 'lg:min-h-[min(62vh,620px)]'
+                                : 'lg:min-h-[min(70vh,720px)]',
+                            )}
                           />
-                        ) : null}
+                          {!devMdEditorPrefs.livePreviewEnabled ? (
+                            <div
+                              ref={contentRef}
+                              className="pointer-events-none h-0 w-0 overflow-hidden opacity-0"
+                              aria-hidden
+                            />
+                          ) : null}
+                        </div>
                       </div>
                       {devMdEditorPrefs.livePreviewEnabled ? (
                         <div ref={contentRef} className="flex min-h-0 min-w-0 flex-col gap-1">
