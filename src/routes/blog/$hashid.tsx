@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { allPosts, allTreeItems, getPostByHashid } from '../../blog/posts'
 import BlogListPage from '../../components/blog-list-page'
+import { validateBlogDevSourceSearch } from '@/lib/blog-dev-source-search'
 
 type TocItem = {
   level: 2 | 3
@@ -57,6 +58,7 @@ function extractToc(content: string): TocItem[] {
 }
 
 export const Route = createFileRoute('/blog/$hashid')({
+  validateSearch: validateBlogDevSourceSearch,
   loader: ({ params }) => {
     const activePost = getPostByHashid(params.hashid)
 
@@ -90,12 +92,14 @@ export const Route = createFileRoute('/blog/$hashid')({
 
 function BlogPostPage() {
   const { posts, treeItems, activePost, toc } = Route.useLoaderData()
+  const devSourceSearch = Route.useSearch()
   return (
     <BlogListPage
       posts={posts}
       treeItems={treeItems}
       activePost={activePost}
       toc={Array.isArray(toc) ? toc : []}
+      devSourceSearch={devSourceSearch}
     />
   )
 }

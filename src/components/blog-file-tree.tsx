@@ -7,6 +7,7 @@ import {
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { blogUiConfig } from '@/blog/config'
 import { withBaseUrl } from '@/lib/base-url'
+import type { BlogDevSourceSearch } from '@/lib/blog-dev-source-search'
 import { cn } from '@/lib/utils'
 
 type BlogFileTreeProps = {
@@ -24,6 +25,8 @@ type BlogFileTreeProps = {
   }
   onOpenPathsChange?: (paths: string[]) => void
   onSelectFile?: () => void
+  /** 开发源码模式时保留在地址栏的 search（如 `?source=1`） */
+  linkSearch?: BlogDevSourceSearch
 }
 
 type TreeNode = {
@@ -133,6 +136,7 @@ function NodeItem({
   openPaths,
   setOpenPaths,
   onSelectFile,
+  linkSearch,
   path = '',
 }: {
   node: TreeNode
@@ -142,6 +146,7 @@ function NodeItem({
   openPaths: Set<string>
   setOpenPaths: Dispatch<SetStateAction<Set<string>>>
   onSelectFile?: () => void
+  linkSearch?: BlogDevSourceSearch
   path?: string
 }) {
   const isFile = Boolean(node.hashid)
@@ -158,6 +163,7 @@ function NodeItem({
         <Link
           to="/blog/$hashid"
           params={{ hashid: node.hashid }}
+          search={linkSearch}
           onClick={onSelectFile}
           className={cn(
             'explorer-row',
@@ -226,6 +232,7 @@ function NodeItem({
                 openPaths={openPaths}
                 setOpenPaths={setOpenPaths}
                 onSelectFile={onSelectFile}
+                linkSearch={linkSearch}
               />
             ))}
           </ul>
@@ -243,6 +250,7 @@ export default function BlogFileTree({
   toggleDirectoryRequest,
   onOpenPathsChange,
   onSelectFile,
+  linkSearch,
 }: BlogFileTreeProps) {
   const tree = useMemo(() => buildTree(items), [items])
   const current = items.find((item) => item.hashid === currentHashid)
@@ -297,6 +305,7 @@ export default function BlogFileTree({
             openPaths={openPaths}
             setOpenPaths={setOpenPaths}
             onSelectFile={onSelectFile}
+            linkSearch={linkSearch}
           />
         ))}
       </ul>

@@ -53,6 +53,7 @@ import {
   writeBlogSidebarUiPrefs,
 } from '@/lib/blog-sidebar-prefs'
 import { openBlogLocalShell, openMarkdownInEditor } from '@/lib/blog-dev-open-editor'
+import type { BlogDevSourceSearch } from '@/lib/blog-dev-source-search'
 import { withBaseUrl } from '@/lib/base-url'
 import { streamdownMarkdownAllowedTags } from '@/lib/streamdown-markdown-allowed-tags'
 import { streamdownRehypePlugins } from '@/lib/streamdown-rehype-plugins'
@@ -63,6 +64,8 @@ type BlogListPageProps = {
   treeItems: BlogTreeItem[]
   activePost?: BlogPost
   toc?: Array<{ level: 2 | 3; text: string; id: string }>
+  /** 与地址栏 `?source=1` 同步；仅在开发环境且文章带 `raw` 时进入源码模式 */
+  devSourceSearch?: BlogDevSourceSearch
 }
 
 type KeyboardNavNode = {
@@ -261,6 +264,7 @@ export default function BlogListPage({
   treeItems,
   activePost,
   toc = [],
+  devSourceSearch = {},
 }: BlogListPageProps) {
   const MOBILE_TREE_ANIMATION_MS = 220
   const navigate = useNavigate()
@@ -298,7 +302,6 @@ export default function BlogListPage({
   const [shareState, setShareState] = useState<'idle' | 'copied-link' | 'copied-article' | 'failed'>('idle')
   const [sharePassword, setSharePassword] = useState('')
   const [shareStreamEnabled, setShareStreamEnabled] = useState(false)
-  const [devSourceMode, setDevSourceMode] = useState(false)
   const [devDraftRaw, setDevDraftRaw] = useState('')
   const [devSaveState, setDevSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [devMdEditorPrefs, setDevMdEditorPrefs] = useState<BlogDevMdEditorPrefs>(BLOG_DEV_MD_EDITOR_DEFAULT_PREFS)
@@ -332,6 +335,19 @@ export default function BlogListPage({
       : undefined
   const currentHashid = activePost?.meta.hashid
   const devEditorEnabled = import.meta.env.DEV && activePost?.raw !== undefined
+  const devSourceMode = Boolean(devEditorEnabled && devSourceSearch.source === 1)
+
+  const toggleDevSourceMode = () => {
+    if (!devEditorEnabled) return
+    navigate({
+      to: '.',
+      search: (prev) => {
+        const on = (prev as BlogDevSourceSearch).source === 1
+        return on ? {} : { source: 1 as const }
+      },
+      replace: true,
+    })
+  }
   const hasPostContent = Boolean(activePost?.content.trim())
   const tocIds = useMemo(() => toc.map((item) => item.id), [toc])
   const mainGridStyle = useMemo(
@@ -879,6 +895,7 @@ export default function BlogListPage({
           navigate({
             to: '/blog/$hashid',
             params: { hashid: entry.hashid },
+            search: devSourceMode ? { source: 1 } : {},
           })
         }
         return
@@ -911,6 +928,7 @@ export default function BlogListPage({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [
     activePane,
+    devSourceMode,
     focusedTocId,
     focusedTreePath,
     navigate,
@@ -1014,6 +1032,7 @@ export default function BlogListPage({
                 toggleDirectoryRequest={toggleDirectoryRequest}
                 onOpenPathsChange={setOpenDirectoryPaths}
                 onSelectFile={closeMobileTree}
+                linkSearch={devSourceMode ? { source: 1 } : undefined}
               />
             </div>
             <button
@@ -1060,6 +1079,7 @@ export default function BlogListPage({
                 toggleDirectoryRequest={toggleDirectoryRequest}
                 onOpenPathsChange={setOpenDirectoryPaths}
                 onSelectFile={() => setShowMobileTree(false)}
+                linkSearch={devSourceMode ? { source: 1 } : undefined}
               />
             </div>
             {!sidebarsHidden ? (
@@ -1231,7 +1251,7 @@ export default function BlogListPage({
                       </div>
                       <button
                         type="button"
-                        onClick={() => setDevSourceMode((prev) => !prev)}
+                        onClick={toggleDevSourceMode}
                         className={cn(
                           'inline-flex items-center gap-1.5 rounded border px-3 py-1.5 text-sm transition-colors',
                           devSourceMode
@@ -1243,37 +1263,6 @@ export default function BlogListPage({
                         <Code2 className="size-4 shrink-0 opacity-90" />
                         <span>{devSourceMode ? '预览' : '源码'}</span>
                       </button>
-                      {devSourceMode ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => void saveDevDraftToDisk()}
-                            disabled={devSaveState === 'saving'}
-                            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:pointer-events-none disabled:opacity-60"
-                            title={
-                              devMdEditorPrefs.vimEnabled
-                                ? '⌘S / Ctrl+S 保存；Vim：插入模式下 jk 退回普通模式'
-                                : '⌘S / Ctrl+S 快捷保存'
-                            }
-                          >
-                            {devSaveState === 'saving' ? (
-                              <Loader2 className="size-4 shrink-0 animate-spin" />
-                            ) : (
-                              <Check className="size-4 shrink-0 opacity-70" />
-                            )}
-                            <span className="whitespace-nowrap">保存到磁盘</span>
-                          </button>
-                          <span className="hidden max-w-[280px] truncate text-xs text-muted-foreground sm:inline sm:max-w-none sm:whitespace-normal">
-                            {devSaveState === 'saved'
-                              ? '已保存'
-                              : devSaveState === 'error'
-                                ? '保存失败，请查看控制台'
-                                : devMdEditorPrefs.vimEnabled
-                                  ? '⌘S / Ctrl+S 保存 · Vim：jk 退出插入'
-                                  : '⌘S / Ctrl+S 快捷保存'}
-                          </span>
-                        </>
-                      ) : null}
                     </>
                   ) : null}
                   {currentHashid ? (
@@ -1454,8 +1443,9 @@ export default function BlogListPage({
 
                 {devSourceMode && devEditorEnabled ? (
                   <div key={activePost.meta.hashid} className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-border bg-muted/35 px-3 py-2 text-sm text-foreground">
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/35 px-3 py-2 text-sm text-foreground sm:flex-row sm:items-center sm:justify-between sm:gap-x-4 sm:gap-y-2">
+                      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
+                        <div className="flex items-center gap-2">
                         <Keyboard className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
                         <span id="dev-md-vim-label" className="text-muted-foreground">
                           Vim 键位
@@ -1482,8 +1472,8 @@ export default function BlogListPage({
                           />
                           <span className="sr-only">{devMdEditorPrefs.vimEnabled ? '已开启' : '已关闭'}</span>
                         </button>
-                      </div>
-                      <div className="flex items-center gap-2">
+                        </div>
+                        <div className="flex items-center gap-2">
                         <Eye className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
                         <span id="dev-md-preview-label" className="text-muted-foreground">
                           实时预览
@@ -1514,8 +1504,8 @@ export default function BlogListPage({
                             {devMdEditorPrefs.livePreviewEnabled ? '右侧预览已开启' : '右侧预览已关闭'}
                           </span>
                         </button>
-                      </div>
-                      <label className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[280px]">
+                        </div>
+                        <label className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[280px]">
                         <Type className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
                         <span className="shrink-0 text-muted-foreground">字体</span>
                         <select
@@ -1534,8 +1524,8 @@ export default function BlogListPage({
                             </option>
                           ))}
                         </select>
-                      </label>
-                      <label className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[200px]">
+                        </label>
+                        <label className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[200px]">
                         <span className="shrink-0 text-muted-foreground">字号</span>
                         <select
                           value={devMdEditorPrefs.fontSizePx}
@@ -1550,7 +1540,29 @@ export default function BlogListPage({
                             </option>
                           ))}
                         </select>
-                      </label>
+                        </label>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:pl-2">
+                        <button
+                          type="button"
+                          onClick={() => void saveDevDraftToDisk()}
+                          disabled={devSaveState === 'saving'}
+                          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3 py-1 text-sm text-foreground hover:bg-muted disabled:pointer-events-none disabled:opacity-60"
+                          title="保存到磁盘"
+                        >
+                          {devSaveState === 'saving' ? (
+                            <Loader2 className="size-4 shrink-0 animate-spin" />
+                          ) : (
+                            <Check className="size-4 shrink-0 opacity-70" />
+                          )}
+                          <span className="whitespace-nowrap">保存到磁盘</span>
+                        </button>
+                        {devSaveState === 'saved' || devSaveState === 'error' ? (
+                          <span className="max-w-[200px] truncate text-xs text-muted-foreground sm:max-w-none">
+                            {devSaveState === 'saved' ? '已保存' : '保存失败，请查看控制台'}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     <div
                       className={cn(
@@ -1657,6 +1669,7 @@ export default function BlogListPage({
                         navigate({
                           to: '/blog/$hashid',
                           params: { hashid: prevPost.hashid },
+                          search: devSourceMode ? { source: 1 } : {},
                         })
                       }
                       className="flex h-full cursor-pointer flex-col rounded-lg border border-border bg-card px-4 py-3 text-left text-sm text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
@@ -1684,6 +1697,7 @@ export default function BlogListPage({
                         navigate({
                           to: '/blog/$hashid',
                           params: { hashid: nextPost.hashid },
+                          search: devSourceMode ? { source: 1 } : {},
                         })
                       }
                       className="flex h-full cursor-pointer flex-col items-end rounded-lg border border-border bg-card px-4 py-3 text-right text-sm text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
@@ -1723,15 +1737,13 @@ export default function BlogListPage({
               activePane === 'right' && 'pane-focused',
             )}
           >
-            <div className="toc-panel-title flex w-full items-center justify-between gap-2">
-              <span className="flex min-w-0 items-center gap-1.5">
-                <ListTree className="size-4 shrink-0" />
-                <span>本页目录</span>
-              </span>
+            <div className="toc-panel-title relative flex w-full items-center gap-1.5">
+              <ListTree className="size-4 shrink-0" />
+              <span>本页目录</span>
               <button
                 type="button"
                 onClick={() => setTocPanelCollapsed(true)}
-                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-[#8b97b3] transition-colors hover:bg-white/10 hover:text-[#eceff7]"
+                className="absolute top-1/2 right-2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-[#8b97b3] transition-colors hover:bg-white/10 hover:text-[#eceff7]"
                 aria-label="收起本页目录"
                 title="收起本页目录"
               >
