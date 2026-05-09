@@ -38,8 +38,16 @@ export type BlogDevCodemirrorMarkdownProps = {
 function editorShellTheme(fontSizePx: number) {
   return EditorView.theme(
     {
-      '&': { fontSize: `${fontSizePx}px` },
+      '&': {
+        fontSize: `${fontSizePx}px`,
+        height: '100%',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+      },
       '.cm-scroller': {
+        flex: 1,
+        minHeight: 0,
         lineHeight: '1.625',
       },
       '.cm-content': { caretColor: 'var(--color-foreground)', paddingBlock: '12px' },
@@ -178,8 +186,8 @@ export default function BlogDevCodemirrorMarkdown({
     <div
       ref={hostRef}
       className={cn(
-        'blog-dev-codemirror min-h-[min(70vh,720px)] w-full overflow-hidden rounded-lg border border-border bg-background text-foreground',
-        '[&_.cm-editor]:outline-none [&_.cm-editor]:min-h-[min(70vh,720px)] [&_.cm-scroller]:min-h-[min(70vh,720px)]',
+        'blog-dev-codemirror flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-background text-foreground',
+        '[&_.cm-editor]:outline-none',
         className,
       )}
       aria-label="Markdown 源码"

@@ -280,7 +280,9 @@ export default function BlogListPage({
   const [sidebarsHidden, setSidebarsHidden] = useState(false)
   const [leftSidebarWidth, setLeftSidebarWidth] = useState(BLOG_LEFT_SIDEBAR_DEFAULT_WIDTH)
   const [isResizingLeftSidebar, setIsResizingLeftSidebar] = useState(false)
-  const showToc = Boolean(activePost) && toc.length > 1
+  const hasTocContent = Boolean(activePost) && toc.length > 1
+  const [tocPanelCollapsed, setTocPanelCollapsed] = useState(false)
+  const showToc = hasTocContent && !tocPanelCollapsed
   const [activeTocId, setActiveTocId] = useState<string>('')
   const [focusedTocId, setFocusedTocId] = useState<string | undefined>(undefined)
   const [activePane, setActivePane] = useState<'left' | 'right'>('left')
@@ -587,6 +589,7 @@ export default function BlogListPage({
     setSidebarsHidden(p.sidebarsHidden)
     setLeftSidebarWidth(p.leftSidebarWidth)
     setActivePane(p.activePane)
+    setTocPanelCollapsed(p.tocPanelCollapsed)
     setOpenDirectoryPaths(p.openDirectoryPaths)
     setSidebarPrefsHydrated(true)
   }, [])
@@ -611,9 +614,10 @@ export default function BlogListPage({
       sidebarsHidden,
       leftSidebarWidth,
       activePane,
+      tocPanelCollapsed,
       openDirectoryPaths,
     })
-  }, [sidebarPrefsHydrated, sidebarsHidden, leftSidebarWidth, activePane, openDirectoryPaths])
+  }, [sidebarPrefsHydrated, sidebarsHidden, leftSidebarWidth, activePane, tocPanelCollapsed, openDirectoryPaths])
 
   useEffect(() => {
     if (!devSourceMode || activePost?.raw === undefined) return
@@ -1079,7 +1083,12 @@ export default function BlogListPage({
           </div>
         </div>
 
-        <div className={cn('blog-content-columns', (!showToc || sidebarsHidden) && 'blog-content-columns-no-toc')}>
+        <div
+          className={cn(
+            'blog-content-columns',
+            (!showToc || sidebarsHidden) && 'blog-content-columns-no-toc',
+          )}
+        >
         <section
           className="blog-col-main"
           ref={(node) => {
@@ -1560,6 +1569,7 @@ export default function BlogListPage({
                         <div
                           className={cn(
                             'flex min-h-0 min-w-0 flex-col gap-1',
+                            devMdEditorPrefs.livePreviewEnabled && 'h-full',
                             !devMdEditorPrefs.livePreviewEnabled && 'w-full max-w-[1100px]',
                           )}
                         >
@@ -1573,7 +1583,7 @@ export default function BlogListPage({
                             fontFamily={fontFamilyForBlogDevEditor(devMdEditorPrefs.fontId)}
                             fontSizePx={devMdEditorPrefs.fontSizePx}
                             className={cn(
-                              'min-h-[min(42vh,400px)] min-w-0 flex-1',
+                              'h-full min-h-[min(42vh,400px)] min-w-0 flex-1',
                               devMdEditorPrefs.livePreviewEnabled
                                 ? 'lg:min-h-[min(62vh,620px)]'
                                 : 'lg:min-h-[min(70vh,720px)]',
@@ -1589,9 +1599,9 @@ export default function BlogListPage({
                         </div>
                       </div>
                       {devMdEditorPrefs.livePreviewEnabled ? (
-                        <div ref={contentRef} className="flex min-h-0 min-w-0 flex-col gap-1">
+                        <div ref={contentRef} className="flex h-full min-h-0 min-w-0 flex-col gap-1">
                           <p className="m-0 text-xs font-medium text-muted-foreground">实时预览</p>
-                          <div className="blog-article-content max-w-none prose-pre:my-0 min-h-[min(42vh,400px)] flex-1 overflow-y-auto overscroll-contain rounded-lg border border-border bg-background px-3 py-2 sm:px-4 lg:min-h-[min(62vh,620px)]">
+                          <div className="blog-article-content max-w-none prose-pre:my-0 flex h-full min-h-[min(42vh,400px)] flex-1 overflow-y-auto overscroll-contain rounded-lg border border-border bg-background px-3 py-2 sm:px-4 lg:min-h-[min(62vh,620px)]">
                             {devLivePreviewMarkdown.trim() ? (
                               <Streamdown
                                 allowedTags={streamdownMarkdownAllowedTags}
@@ -1713,10 +1723,21 @@ export default function BlogListPage({
               activePane === 'right' && 'pane-focused',
             )}
           >
-            <p className="toc-panel-title flex w-full items-center gap-1.5">
-              <ListTree className="size-4 shrink-0" />
-              <span>本页目录</span>
-            </p>
+            <div className="toc-panel-title flex w-full items-center justify-between gap-2">
+              <span className="flex min-w-0 items-center gap-1.5">
+                <ListTree className="size-4 shrink-0" />
+                <span>本页目录</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setTocPanelCollapsed(true)}
+                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-[#8b97b3] transition-colors hover:bg-white/10 hover:text-[#eceff7]"
+                aria-label="收起本页目录"
+                title="收起本页目录"
+              >
+                <X className="size-3.5 shrink-0" />
+              </button>
+            </div>
             <ul className="toc-list min-h-0 flex-1 overflow-y-auto overscroll-contain">
               {toc.map((item, index) => {
                 const prev = toc[index - 1]
@@ -1764,6 +1785,20 @@ export default function BlogListPage({
           <span className="sr-only">打开目录树</span>
         </button>
       </div>
+      {hasTocContent && tocPanelCollapsed && !sidebarsHidden ? (
+        <div className="fixed bottom-4 right-4 z-30 hidden xl:block">
+          <button
+            type="button"
+            onClick={() => setTocPanelCollapsed(false)}
+            aria-label="显示本页目录"
+            title="显示本页目录"
+            className="inline-flex size-9 items-center justify-center rounded border border-border bg-card text-foreground shadow-sm hover:bg-muted"
+          >
+            <ListTree className="size-4 shrink-0" />
+            <span className="sr-only">显示本页目录</span>
+          </button>
+        </div>
+      ) : null}
     </main>
   )
 }

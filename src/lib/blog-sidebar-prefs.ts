@@ -15,6 +15,8 @@ export type BlogSidebarUiPrefs = {
   leftSidebarWidth: number
   /** 键盘焦点在左侧目录还是右侧大纲 */
   activePane: 'left' | 'right'
+  /** 右侧「本页目录」面板是否收起（与专注模式无关） */
+  tocPanelCollapsed: boolean
   /** 文件树中展开的目录路径 */
   openDirectoryPaths: string[]
 }
@@ -23,6 +25,7 @@ export const BLOG_SIDEBAR_UI_DEFAULT_PREFS: BlogSidebarUiPrefs = {
   sidebarsHidden: false,
   leftSidebarWidth: BLOG_LEFT_SIDEBAR_DEFAULT_WIDTH,
   activePane: 'left',
+  tocPanelCollapsed: false,
   openDirectoryPaths: [],
 }
 
@@ -49,13 +52,17 @@ function coercePrefs(raw: unknown): BlogSidebarUiPrefs {
   const ap = o.activePane
   const activePane =
     ap === 'left' || ap === 'right' ? ap : BLOG_SIDEBAR_UI_DEFAULT_PREFS.activePane
+  const tocPanelCollapsed =
+    typeof o.tocPanelCollapsed === 'boolean'
+      ? o.tocPanelCollapsed
+      : BLOG_SIDEBAR_UI_DEFAULT_PREFS.tocPanelCollapsed
   let openDirectoryPaths = BLOG_SIDEBAR_UI_DEFAULT_PREFS.openDirectoryPaths
   if (Array.isArray(o.openDirectoryPaths)) {
     openDirectoryPaths = o.openDirectoryPaths
       .filter((x): x is string => typeof x === 'string' && x.length > 0 && x.length < 2048)
       .slice(0, OPEN_DIRS_MAX)
   }
-  return { sidebarsHidden, leftSidebarWidth, activePane, openDirectoryPaths }
+  return { sidebarsHidden, leftSidebarWidth, activePane, tocPanelCollapsed, openDirectoryPaths }
 }
 
 export function readBlogSidebarUiPrefs(): BlogSidebarUiPrefs {
@@ -76,6 +83,7 @@ export function writeBlogSidebarUiPrefs(next: BlogSidebarUiPrefs): void {
     const payload: BlogSidebarUiPrefs = {
       ...next,
       leftSidebarWidth: clampWidth(next.leftSidebarWidth),
+      tocPanelCollapsed: next.tocPanelCollapsed,
       openDirectoryPaths: next.openDirectoryPaths
         .filter((x) => typeof x === 'string' && x.length > 0)
         .slice(0, OPEN_DIRS_MAX),
