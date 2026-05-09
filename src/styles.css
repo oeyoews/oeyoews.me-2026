@@ -171,6 +171,11 @@
     transition: grid-template-columns 220ms ease;
   }
 
+  /* 与 main-grid / vscode-explorer-content 组合使用：首屏偏好恢复前禁用布局过渡，避免 SSR 水合或存储回填时的假动画 */
+  .sidebar-layout-instant {
+    transition: none !important;
+  }
+
   .main-grid-focus-mode {
     @apply xl:grid-cols-[48px_minmax(0,1fr)];
     background: var(--color-secondary);

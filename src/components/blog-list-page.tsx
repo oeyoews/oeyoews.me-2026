@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate, useRouter } from '@tanstack/react-router'
 import { Streamdown } from 'streamdown'
 import { createCodePlugin } from '@streamdown/code'
@@ -13,7 +13,10 @@ import {
   Copy,
   Download,
   ExternalLink,
+  Eye,
   FileText,
+  FolderOpen,
+  Keyboard,
   Link2,
   ListTree,
   Loader2,
@@ -21,6 +24,8 @@ import {
   PanelLeftOpen,
   Quote,
   SearchX,
+  Terminal,
+  Type,
   X,
 } from 'lucide-react'
 import { markdownBodyForDevPreview, type BlogPost, type BlogPostMeta, type BlogTreeItem } from '../blog/posts'
@@ -32,13 +37,22 @@ import VscodeActivityBar from './vscode-activity-bar'
 import {
   BLOG_DEV_MD_EDITOR_DEFAULT_PREFS,
   BLOG_DEV_MD_EDITOR_FONT_OPTIONS,
+  BLOG_DEV_MD_EDITOR_FONT_SIZE_OPTIONS,
+  clampBlogDevMdEditorFontSizePx,
   fontFamilyForBlogDevEditor,
   readBlogDevMdEditorPrefs,
   writeBlogDevMdEditorPrefs,
   type BlogDevMdEditorFontId,
   type BlogDevMdEditorPrefs,
 } from '@/lib/blog-dev-editor-prefs'
-import { openMarkdownInEditor } from '@/lib/blog-dev-open-editor'
+import {
+  BLOG_LEFT_SIDEBAR_DEFAULT_WIDTH,
+  BLOG_LEFT_SIDEBAR_MAX_WIDTH,
+  BLOG_LEFT_SIDEBAR_MIN_WIDTH,
+  readBlogSidebarUiPrefs,
+  writeBlogSidebarUiPrefs,
+} from '@/lib/blog-sidebar-prefs'
+import { openBlogLocalShell, openMarkdownInEditor } from '@/lib/blog-dev-open-editor'
 import { withBaseUrl } from '@/lib/base-url'
 import { streamdownMarkdownAllowedTags } from '@/lib/streamdown-markdown-allowed-tags'
 import { streamdownRehypePlugins } from '@/lib/streamdown-rehype-plugins'
@@ -62,6 +76,9 @@ const code = createCodePlugin({
   themes: ['github-light', 'one-dark-pro'],
 })
 const cjk = createCjkPlugin()
+
+/** 右侧 Markdown 预览防抖（毫秒）；切换文章时会立即刷新，不等待该间隔。 */
+const DEV_LIVE_PREVIEW_DEBOUNCE_MS = 220
 
 function createKeyboardNavNode(name: string, path = ''): KeyboardNavNode {
   return {
@@ -246,9 +263,6 @@ export default function BlogListPage({
   toc = [],
 }: BlogListPageProps) {
   const MOBILE_TREE_ANIMATION_MS = 220
-  const LEFT_SIDEBAR_MIN_WIDTH = 220
-  const LEFT_SIDEBAR_MAX_WIDTH = 520
-  const LEFT_SIDEBAR_DEFAULT_WIDTH = 300
   const navigate = useNavigate()
   const router = useRouter()
   const contentRef = useRef<HTMLDivElement>(null)
@@ -260,11 +274,11 @@ export default function BlogListPage({
   const mobileTreeCloseTimerRef = useRef<number | null>(null)
   const mobileTreeOpenRafRef = useRef<number | null>(null)
   const sidebarResizeStartXRef = useRef<number | null>(null)
-  const sidebarResizeStartWidthRef = useRef(LEFT_SIDEBAR_DEFAULT_WIDTH)
+  const sidebarResizeStartWidthRef = useRef(BLOG_LEFT_SIDEBAR_DEFAULT_WIDTH)
   const [showMobileTree, setShowMobileTree] = useState(false)
   const [mobileTreeOpen, setMobileTreeOpen] = useState(false)
   const [sidebarsHidden, setSidebarsHidden] = useState(false)
-  const [leftSidebarWidth, setLeftSidebarWidth] = useState(LEFT_SIDEBAR_DEFAULT_WIDTH)
+  const [leftSidebarWidth, setLeftSidebarWidth] = useState(BLOG_LEFT_SIDEBAR_DEFAULT_WIDTH)
   const [isResizingLeftSidebar, setIsResizingLeftSidebar] = useState(false)
   const showToc = Boolean(activePost) && toc.length > 1
   const [activeTocId, setActiveTocId] = useState<string>('')
@@ -273,6 +287,9 @@ export default function BlogListPage({
   const [focusedHashid, setFocusedHashid] = useState<string | undefined>(undefined)
   const [focusedTreePath, setFocusedTreePath] = useState<string | undefined>(undefined)
   const [openDirectoryPaths, setOpenDirectoryPaths] = useState<string[]>([])
+  const [sidebarPrefsHydrated, setSidebarPrefsHydrated] = useState(false)
+  /** 偏好与布局稳定后再启用 grid / 资源管理器宽度过渡，避免水合或存储回填触发「假关闭」动画 */
+  const [sidebarLayoutTransitionReady, setSidebarLayoutTransitionReady] = useState(false)
   const [toggleDirectoryRequest, setToggleDirectoryRequest] = useState<{ path: string; nonce: number }>()
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
   const [shareAction, setShareAction] = useState<'copy-link' | 'copy-article' | 'download-md' | 'open-new-tab'>('copy-link')
@@ -286,7 +303,7 @@ export default function BlogListPage({
   const shareResetTimerRef = useRef<number | null>(null)
   const shareMenuRef = useRef<HTMLDivElement>(null)
   const [ideOpenMenuOpen, setIdeOpenMenuOpen] = useState(false)
-  const [ideOpenAction, setIdeOpenAction] = useState<'vscode' | 'cursor'>('vscode')
+  const [ideOpenAction, setIdeOpenAction] = useState<'vscode' | 'cursor' | 'explorer' | 'terminal'>('vscode')
   const ideOpenMenuRef = useRef<HTMLDivElement>(null)
   const leftPaneEntries = useMemo(() => buildKeyboardNavEntries(treeItems), [treeItems])
   const openDirectoryPathSet = useMemo(() => new Set(openDirectoryPaths), [openDirectoryPaths])
@@ -320,17 +337,72 @@ export default function BlogListPage({
     [leftSidebarWidth],
   )
 
-  const devLivePreviewMarkdown = useMemo(() => {
+  const devPreviewMarkdownComputed = useMemo(() => {
     if (!devEditorEnabled || !activePost) return ''
     return markdownBodyForDevPreview(devDraftRaw, activePost.meta.sourcePath)
   }, [activePost, devDraftRaw, devEditorEnabled])
 
+  const devLivePreviewHashidSyncRef = useRef<string | undefined>(undefined)
+  const [devLivePreviewMarkdown, setDevLivePreviewMarkdown] = useState('')
+
+  useEffect(() => {
+    if (!devEditorEnabled || !activePost) {
+      devLivePreviewHashidSyncRef.current = undefined
+      setDevLivePreviewMarkdown('')
+      return
+    }
+
+    const hashid = activePost.meta.hashid
+    const switchedArticle = devLivePreviewHashidSyncRef.current !== hashid
+    devLivePreviewHashidSyncRef.current = hashid
+
+    if (switchedArticle) {
+      setDevLivePreviewMarkdown(devPreviewMarkdownComputed)
+      return
+    }
+
+    const timerId = window.setTimeout(() => {
+      setDevLivePreviewMarkdown(devPreviewMarkdownComputed)
+    }, DEV_LIVE_PREVIEW_DEBOUNCE_MS)
+
+    return () => window.clearTimeout(timerId)
+  }, [activePost, devEditorEnabled, devPreviewMarkdownComputed])
+
   const updateDevMdEditorPrefs = (patch: Partial<BlogDevMdEditorPrefs>) => {
     setDevMdEditorPrefs((prev) => {
-      const next = { ...prev, ...patch }
+      const normalized =
+        patch.fontSizePx !== undefined
+          ? { ...patch, fontSizePx: clampBlogDevMdEditorFontSizePx(patch.fontSizePx) }
+          : patch
+      const next = { ...prev, ...normalized }
       writeBlogDevMdEditorPrefs(next)
       return next
     })
+  }
+
+  type DevIdeOpenAction = 'vscode' | 'cursor' | 'explorer' | 'terminal'
+
+  const runDevIdeOpen = async (action: DevIdeOpenAction) => {
+    if (!activePost) return
+    try {
+      if (action === 'explorer' || action === 'terminal') {
+        await openBlogLocalShell(activePost.meta.sourcePath, action)
+      } else {
+        await openMarkdownInEditor(activePost.meta.sourcePath, action)
+      }
+      setIdeOpenAction(action)
+    } catch (e) {
+      console.error(e)
+      window.alert(
+        action === 'vscode'
+          ? '无法在 VS Code 中打开：请确认使用本地开发服务器（bun run dev），且已安装 VS Code。'
+          : action === 'cursor'
+            ? '无法在 Cursor 中打开：请确认使用本地开发服务器（bun run dev），且已安装 Cursor。'
+            : action === 'explorer'
+              ? '无法在资源管理器中打开：请确认使用本地开发服务器（bun run dev）。'
+              : '无法在终端中打开：请确认使用本地开发服务器（bun run dev）；Windows 可安装 Windows Terminal（wt.exe）或依赖 cmd 回退。',
+      )
+    }
   }
 
   const openMobileTree = () => {
@@ -509,6 +581,39 @@ export default function BlogListPage({
   useEffect(() => {
     setDevMdEditorPrefs(readBlogDevMdEditorPrefs())
   }, [])
+
+  useLayoutEffect(() => {
+    const p = readBlogSidebarUiPrefs()
+    setSidebarsHidden(p.sidebarsHidden)
+    setLeftSidebarWidth(p.leftSidebarWidth)
+    setActivePane(p.activePane)
+    setOpenDirectoryPaths(p.openDirectoryPaths)
+    setSidebarPrefsHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    if (!sidebarPrefsHydrated) return
+    let raf2 = 0
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        setSidebarLayoutTransitionReady(true)
+      })
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      if (raf2) cancelAnimationFrame(raf2)
+    }
+  }, [sidebarPrefsHydrated])
+
+  useEffect(() => {
+    if (!sidebarPrefsHydrated) return
+    writeBlogSidebarUiPrefs({
+      sidebarsHidden,
+      leftSidebarWidth,
+      activePane,
+      openDirectoryPaths,
+    })
+  }, [sidebarPrefsHydrated, sidebarsHidden, leftSidebarWidth, activePane, openDirectoryPaths])
 
   useEffect(() => {
     if (!devSourceMode || activePost?.raw === undefined) return
@@ -818,8 +923,8 @@ export default function BlogListPage({
       if (sidebarResizeStartXRef.current === null) return
       const deltaX = event.clientX - sidebarResizeStartXRef.current
       const nextWidth = Math.min(
-        LEFT_SIDEBAR_MAX_WIDTH,
-        Math.max(LEFT_SIDEBAR_MIN_WIDTH, sidebarResizeStartWidthRef.current + deltaX),
+        BLOG_LEFT_SIDEBAR_MAX_WIDTH,
+        Math.max(BLOG_LEFT_SIDEBAR_MIN_WIDTH, sidebarResizeStartWidthRef.current + deltaX),
       )
       setLeftSidebarWidth(nextWidth)
     }
@@ -841,7 +946,7 @@ export default function BlogListPage({
       document.body.style.userSelect = ''
       document.body.style.cursor = ''
     }
-  }, [isResizingLeftSidebar, LEFT_SIDEBAR_MAX_WIDTH, LEFT_SIDEBAR_MIN_WIDTH])
+  }, [isResizingLeftSidebar])
 
   useEffect(() => {
     return () => {
@@ -924,6 +1029,7 @@ export default function BlogListPage({
         className={cn(
           'main-grid',
           sidebarsHidden && 'main-grid-focus-mode',
+          !sidebarLayoutTransitionReady && 'sidebar-layout-instant',
         )}
         style={mainGridStyle}
       >
@@ -935,7 +1041,11 @@ export default function BlogListPage({
               onToggleSidebars={() => setSidebarsHidden((prev) => !prev)}
             />
             <div
-              className={cn('vscode-explorer-content', sidebarsHidden && 'vscode-explorer-content-collapsed')}
+              className={cn(
+                'vscode-explorer-content',
+                sidebarsHidden && 'vscode-explorer-content-collapsed',
+                !sidebarLayoutTransitionReady && 'sidebar-layout-instant',
+              )}
               aria-hidden={sidebarsHidden}
             >
               <BlogFileTree
@@ -1000,32 +1110,35 @@ export default function BlogListPage({
                         <div className="inline-flex overflow-hidden rounded border border-border bg-card text-sm text-foreground">
                           <button
                             type="button"
-                            onClick={async () => {
-                              try {
-                                await openMarkdownInEditor(activePost.meta.sourcePath, ideOpenAction)
-                              } catch (e) {
-                                console.error(e)
-                                window.alert(
-                                  ideOpenAction === 'vscode'
-                                    ? '无法在 VS Code 中打开：请确认使用本地开发服务器（bun run dev），且已安装 VS Code。'
-                                    : '无法在 Cursor 中打开：请确认使用本地开发服务器（bun run dev），且已安装 Cursor。',
-                                )
-                              }
-                            }}
+                            onClick={() => void runDevIdeOpen(ideOpenAction)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 hover:bg-muted"
                             title={
                               ideOpenAction === 'vscode'
                                 ? '在 VS Code 中打开当前 Markdown（需本机已安装）'
-                                : '在 Cursor 中打开当前文件（需本机已安装）'
+                                : ideOpenAction === 'cursor'
+                                  ? '在 Cursor 中打开当前文件（需本机已安装）'
+                                  : ideOpenAction === 'explorer'
+                                    ? '在资源管理器中显示当前 Markdown 文件'
+                                    : '在文件所在目录打开终端'
                             }
                           >
                             {ideOpenAction === 'vscode' ? (
                               <VsCodeBrandIcon className="size-4 shrink-0 opacity-90" />
-                            ) : (
+                            ) : ideOpenAction === 'cursor' ? (
                               <CursorBrandIcon className="size-4 shrink-0 opacity-90" />
+                            ) : ideOpenAction === 'explorer' ? (
+                              <FolderOpen className="size-4 shrink-0 opacity-90" />
+                            ) : (
+                              <Terminal className="size-4 shrink-0 opacity-90" />
                             )}
                             <span className="whitespace-nowrap">
-                              {ideOpenAction === 'vscode' ? '用 VS Code 打开' : '用 Cursor 打开'}
+                              {ideOpenAction === 'vscode'
+                                ? '用 VS Code 打开'
+                                : ideOpenAction === 'cursor'
+                                  ? '用 Cursor 打开'
+                                  : ideOpenAction === 'explorer'
+                                    ? '在资源管理器中显示'
+                                    : '在终端中打开'}
                             </span>
                           </button>
                           <button
@@ -1034,7 +1147,7 @@ export default function BlogListPage({
                             className="inline-flex items-center border-l border-border px-2 hover:bg-muted"
                             aria-haspopup="menu"
                             aria-expanded={ideOpenMenuOpen}
-                            aria-label="选择外部编辑器"
+                            aria-label="选择打开方式"
                           >
                             <ChevronDown className="size-4 shrink-0 opacity-80" />
                           </button>
@@ -1042,14 +1155,14 @@ export default function BlogListPage({
                         {ideOpenMenuOpen ? (
                           <div
                             role="menu"
-                            className="absolute top-[calc(100%+6px)] right-0 z-20 min-w-[200px] rounded-md border border-border bg-popover p-1 shadow-lg"
+                            className="absolute top-[calc(100%+6px)] right-0 z-20 min-w-[220px] rounded-md border border-border bg-popover p-1 shadow-lg"
                           >
                             <button
                               type="button"
                               role="menuitem"
                               onClick={() => {
-                                setIdeOpenAction('vscode')
                                 setIdeOpenMenuOpen(false)
+                                void runDevIdeOpen('vscode')
                               }}
                               className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-foreground hover:bg-muted"
                             >
@@ -1063,14 +1176,44 @@ export default function BlogListPage({
                               type="button"
                               role="menuitem"
                               onClick={() => {
-                                setIdeOpenAction('cursor')
                                 setIdeOpenMenuOpen(false)
+                                void runDevIdeOpen('cursor')
                               }}
                               className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-foreground hover:bg-muted"
                             >
                               <CursorBrandIcon className="size-3.5 shrink-0 opacity-90" />
                               <span>Cursor</span>
                               {ideOpenAction === 'cursor' ? (
+                                <Check className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+                              ) : null}
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setIdeOpenMenuOpen(false)
+                                void runDevIdeOpen('explorer')
+                              }}
+                              className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-foreground hover:bg-muted"
+                            >
+                              <FolderOpen className="size-3.5 shrink-0 opacity-90" />
+                              <span>资源管理器</span>
+                              {ideOpenAction === 'explorer' ? (
+                                <Check className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+                              ) : null}
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setIdeOpenMenuOpen(false)
+                                void runDevIdeOpen('terminal')
+                              }}
+                              className="flex w-full items-center gap-1.5 rounded px-2.5 py-1.5 text-left text-sm whitespace-nowrap text-foreground hover:bg-muted"
+                            >
+                              <Terminal className="size-3.5 shrink-0 opacity-90" />
+                              <span>终端</span>
+                              {ideOpenAction === 'terminal' ? (
                                 <Check className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
                               ) : null}
                             </button>
@@ -1091,6 +1234,37 @@ export default function BlogListPage({
                         <Code2 className="size-4 shrink-0 opacity-90" />
                         <span>{devSourceMode ? '预览' : '源码'}</span>
                       </button>
+                      {devSourceMode ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => void saveDevDraftToDisk()}
+                            disabled={devSaveState === 'saving'}
+                            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:pointer-events-none disabled:opacity-60"
+                            title={
+                              devMdEditorPrefs.vimEnabled
+                                ? '⌘S / Ctrl+S 保存；Vim：插入模式下 jk 退回普通模式'
+                                : '⌘S / Ctrl+S 快捷保存'
+                            }
+                          >
+                            {devSaveState === 'saving' ? (
+                              <Loader2 className="size-4 shrink-0 animate-spin" />
+                            ) : (
+                              <Check className="size-4 shrink-0 opacity-70" />
+                            )}
+                            <span className="whitespace-nowrap">保存到磁盘</span>
+                          </button>
+                          <span className="hidden max-w-[280px] truncate text-xs text-muted-foreground sm:inline sm:max-w-none sm:whitespace-normal">
+                            {devSaveState === 'saved'
+                              ? '已保存'
+                              : devSaveState === 'error'
+                                ? '保存失败，请查看控制台'
+                                : devMdEditorPrefs.vimEnabled
+                                  ? '⌘S / Ctrl+S 保存 · Vim：jk 退出插入'
+                                  : '⌘S / Ctrl+S 快捷保存'}
+                          </span>
+                        </>
+                      ) : null}
                     </>
                   ) : null}
                   {currentHashid ? (
@@ -1273,6 +1447,7 @@ export default function BlogListPage({
                   <div key={activePost.meta.hashid} className="space-y-3">
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-border bg-muted/35 px-3 py-2 text-sm text-foreground">
                       <div className="flex items-center gap-2">
+                        <Keyboard className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
                         <span id="dev-md-vim-label" className="text-muted-foreground">
                           Vim 键位
                         </span>
@@ -1300,6 +1475,7 @@ export default function BlogListPage({
                         </button>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Eye className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
                         <span id="dev-md-preview-label" className="text-muted-foreground">
                           实时预览
                         </span>
@@ -1331,6 +1507,7 @@ export default function BlogListPage({
                         </button>
                       </div>
                       <label className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[280px]">
+                        <Type className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
                         <span className="shrink-0 text-muted-foreground">字体</span>
                         <select
                           value={devMdEditorPrefs.fontId}
@@ -1345,6 +1522,22 @@ export default function BlogListPage({
                           {BLOG_DEV_MD_EDITOR_FONT_OPTIONS.map((opt) => (
                             <option key={opt.id} value={opt.id}>
                               {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[200px]">
+                        <span className="shrink-0 text-muted-foreground">字号</span>
+                        <select
+                          value={devMdEditorPrefs.fontSizePx}
+                          onChange={(e) =>
+                            updateDevMdEditorPrefs({ fontSizePx: Number(e.target.value) })
+                          }
+                          className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-sm text-foreground"
+                        >
+                          {BLOG_DEV_MD_EDITOR_FONT_SIZE_OPTIONS.map((px) => (
+                            <option key={px} value={px}>
+                              {px}px
                             </option>
                           ))}
                         </select>
@@ -1378,6 +1571,7 @@ export default function BlogListPage({
                             onSaveShortcut={() => void saveDevDraftToDisk()}
                             vimKeybindings={devMdEditorPrefs.vimEnabled}
                             fontFamily={fontFamilyForBlogDevEditor(devMdEditorPrefs.fontId)}
+                            fontSizePx={devMdEditorPrefs.fontSizePx}
                             className={cn(
                               'min-h-[min(42vh,400px)] min-w-0 flex-1',
                               devMdEditorPrefs.livePreviewEnabled
@@ -1418,30 +1612,6 @@ export default function BlogListPage({
                           </div>
                         </div>
                       ) : null}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                      <button
-                        type="button"
-                        onClick={() => void saveDevDraftToDisk()}
-                        disabled={devSaveState === 'saving'}
-                        className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:pointer-events-none disabled:opacity-60"
-                      >
-                        {devSaveState === 'saving' ? (
-                          <Loader2 className="size-3.5 shrink-0 animate-spin" />
-                        ) : (
-                          <Check className="size-3.5 shrink-0 opacity-70" />
-                        )}
-                        保存到磁盘
-                      </button>
-                      <span>
-                        {devSaveState === 'saved'
-                          ? '已保存'
-                          : devSaveState === 'error'
-                            ? '保存失败，请查看控制台'
-                            : devMdEditorPrefs.vimEnabled
-                              ? '⌘S / Ctrl+S 保存 · Vim：插入模式下 jk 退回普通模式'
-                              : '⌘S / Ctrl+S 快捷保存'}
-                      </span>
                     </div>
                   </div>
                 ) : hasPostContent ? (

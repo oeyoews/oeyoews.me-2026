@@ -2,6 +2,9 @@ import { withBaseUrl } from '@/lib/base-url'
 
 export type ExternalEditorKind = 'vscode' | 'cursor'
 
+/** 由开发服务器调起本机资源管理器 / 终端（仅 `bun run dev` 可用）。 */
+export type BlogDevShellOpenAction = 'explorer' | 'terminal'
+
 /** `vscode://file/...` / `cursor://file/...`，路径为本地绝对路径（正斜杠）。 */
 export function protocolUrlForLocalFile(absolutePath: string, kind: ExternalEditorKind): string {
   const normalized = absolutePath.replace(/\\/g, '/')
@@ -30,4 +33,16 @@ export async function openMarkdownInEditor(sourcePath: string, kind: ExternalEdi
   a.href = href
   a.rel = 'noopener noreferrer'
   a.click()
+}
+
+export async function openBlogLocalShell(sourcePath: string, action: BlogDevShellOpenAction): Promise<void> {
+  const res = await fetch(withBaseUrl('__dev/api/blog-open-local'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sourcePath, action }),
+  })
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(t || res.statusText)
+  }
 }

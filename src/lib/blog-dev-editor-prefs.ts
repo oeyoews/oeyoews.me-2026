@@ -7,10 +7,22 @@ export type BlogDevMdEditorFontId =
   | 'geist-mono'
   | 'sans-readable'
 
+export const BLOG_DEV_MD_EDITOR_FONT_SIZE_MIN_PX = 11
+export const BLOG_DEV_MD_EDITOR_FONT_SIZE_MAX_PX = 22
+export const BLOG_DEV_MD_EDITOR_FONT_SIZE_DEFAULT_PX = 16
+
+/** 编辑器字号下拉选项（px），与 clamp 范围一致 */
+export const BLOG_DEV_MD_EDITOR_FONT_SIZE_OPTIONS: ReadonlyArray<number> = Array.from(
+  { length: BLOG_DEV_MD_EDITOR_FONT_SIZE_MAX_PX - BLOG_DEV_MD_EDITOR_FONT_SIZE_MIN_PX + 1 },
+  (_, i) => BLOG_DEV_MD_EDITOR_FONT_SIZE_MIN_PX + i,
+)
+
 export type BlogDevMdEditorPrefs = {
   /** 是否使用 Vim 键位（插入模式下 jk 映射为 Esc 等在编辑器内注册） */
   vimEnabled: boolean
   fontId: BlogDevMdEditorFontId
+  /** 源码编辑器字号（像素） */
+  fontSizePx: number
   /** 源码模式下是否显示右侧实时预览 */
   livePreviewEnabled: boolean
 }
@@ -18,6 +30,7 @@ export type BlogDevMdEditorPrefs = {
 export const BLOG_DEV_MD_EDITOR_DEFAULT_PREFS: BlogDevMdEditorPrefs = {
   vimEnabled: true,
   fontId: 'mono-system',
+  fontSizePx: BLOG_DEV_MD_EDITOR_FONT_SIZE_DEFAULT_PX,
   livePreviewEnabled: true,
 }
 
@@ -55,6 +68,12 @@ export const BLOG_DEV_MD_EDITOR_FONT_OPTIONS: ReadonlyArray<{
 
 const FONT_IDS = new Set(BLOG_DEV_MD_EDITOR_FONT_OPTIONS.map((o) => o.id))
 
+export function clampBlogDevMdEditorFontSizePx(n: number): number {
+  const x = Math.round(Number(n))
+  if (!Number.isFinite(x)) return BLOG_DEV_MD_EDITOR_FONT_SIZE_DEFAULT_PX
+  return Math.min(BLOG_DEV_MD_EDITOR_FONT_SIZE_MAX_PX, Math.max(BLOG_DEV_MD_EDITOR_FONT_SIZE_MIN_PX, x))
+}
+
 function coercePrefs(raw: unknown): BlogDevMdEditorPrefs {
   if (!raw || typeof raw !== 'object') return BLOG_DEV_MD_EDITOR_DEFAULT_PREFS
   const o = raw as Record<string, unknown>
@@ -64,11 +83,15 @@ function coercePrefs(raw: unknown): BlogDevMdEditorPrefs {
     typeof fid === 'string' && FONT_IDS.has(fid as BlogDevMdEditorFontId)
       ? (fid as BlogDevMdEditorFontId)
       : BLOG_DEV_MD_EDITOR_DEFAULT_PREFS.fontId
+  const fontSizePx =
+    typeof o.fontSizePx === 'number' && Number.isFinite(o.fontSizePx)
+      ? clampBlogDevMdEditorFontSizePx(o.fontSizePx)
+      : BLOG_DEV_MD_EDITOR_DEFAULT_PREFS.fontSizePx
   const livePreviewEnabled =
     typeof o.livePreviewEnabled === 'boolean'
       ? o.livePreviewEnabled
       : BLOG_DEV_MD_EDITOR_DEFAULT_PREFS.livePreviewEnabled
-  return { vimEnabled, fontId, livePreviewEnabled }
+  return { vimEnabled, fontId, fontSizePx, livePreviewEnabled }
 }
 
 /** 兼容旧版只存 inputMode 的字段 */

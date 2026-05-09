@@ -11,6 +11,7 @@ import { tags } from '@lezer/highlight'
 import { vim, Vim } from '@replit/codemirror-vim'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 
+import { BLOG_DEV_MD_EDITOR_FONT_SIZE_DEFAULT_PX } from '@/lib/blog-dev-editor-prefs'
 import { cn } from '@/lib/utils'
 
 let vimJkEscapeMapped = false
@@ -30,35 +31,39 @@ export type BlogDevCodemirrorMarkdownProps = {
   vimKeybindings?: boolean
   /** 编辑区 `font-family` CSS 值 */
   fontFamily?: string
+  /** 编辑区字号（像素） */
+  fontSizePx?: number
 }
 
-const editorShellTheme = EditorView.theme(
-  {
-    '&': { fontSize: '13px' },
-    '.cm-scroller': {
-      lineHeight: '1.625',
+function editorShellTheme(fontSizePx: number) {
+  return EditorView.theme(
+    {
+      '&': { fontSize: `${fontSizePx}px` },
+      '.cm-scroller': {
+        lineHeight: '1.625',
+      },
+      '.cm-content': { caretColor: 'var(--color-foreground)', paddingBlock: '12px' },
+      '.cm-gutters': {
+        backgroundColor: 'color-mix(in srgb, var(--color-muted) 88%, transparent)',
+        color: 'var(--color-muted-foreground)',
+        border: 'none',
+        borderRight: '1px solid var(--color-border)',
+      },
+      '.cm-activeLineGutter': { backgroundColor: 'transparent' },
+      '.cm-activeLine': {
+        backgroundColor: 'color-mix(in srgb, var(--color-muted) 45%, transparent)',
+      },
+      '&.cm-focused .cm-cursor': { borderLeftColor: 'var(--color-foreground)' },
+      '&.cm-focused .cm-selectionBackground': {
+        background: 'color-mix(in srgb, var(--color-primary) 28%, transparent) !important',
+      },
+      '.cm-selectionBackground': {
+        background: 'color-mix(in srgb, var(--color-primary) 22%, transparent) !important',
+      },
     },
-    '.cm-content': { caretColor: 'var(--color-foreground)', paddingBlock: '12px' },
-    '.cm-gutters': {
-      backgroundColor: 'color-mix(in srgb, var(--color-muted) 88%, transparent)',
-      color: 'var(--color-muted-foreground)',
-      border: 'none',
-      borderRight: '1px solid var(--color-border)',
-    },
-    '.cm-activeLineGutter': { backgroundColor: 'transparent' },
-    '.cm-activeLine': {
-      backgroundColor: 'color-mix(in srgb, var(--color-muted) 45%, transparent)',
-    },
-    '&.cm-focused .cm-cursor': { borderLeftColor: 'var(--color-foreground)' },
-    '&.cm-focused .cm-selectionBackground': {
-      background: 'color-mix(in srgb, var(--color-primary) 28%, transparent) !important',
-    },
-    '.cm-selectionBackground': {
-      background: 'color-mix(in srgb, var(--color-primary) 22%, transparent) !important',
-    },
-  },
-  { dark: false },
-)
+    { dark: false },
+  )
+}
 
 function editorFontTheme(fontFamily: string) {
   return EditorView.theme(
@@ -95,6 +100,7 @@ export default function BlogDevCodemirrorMarkdown({
   className,
   vimKeybindings = true,
   fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+  fontSizePx = BLOG_DEV_MD_EDITOR_FONT_SIZE_DEFAULT_PX,
 }: BlogDevCodemirrorMarkdownProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -134,7 +140,7 @@ export default function BlogDevCodemirrorMarkdown({
         history(),
         lineNumbers(),
         EditorView.lineWrapping,
-        editorShellTheme,
+        editorShellTheme(fontSizePx),
         editorFontTheme(fontFamily),
         keymap.of([indentWithTab]),
         keymap.of(historyKeymap),
@@ -156,7 +162,7 @@ export default function BlogDevCodemirrorMarkdown({
       view.destroy()
       viewRef.current = null
     }
-  }, [editorKey, vimKeybindings, fontFamily])
+  }, [editorKey, vimKeybindings, fontFamily, fontSizePx])
 
   useEffect(() => {
     const view = viewRef.current
