@@ -8,6 +8,7 @@ import { blogContentConfig } from './src/blog/config'
 const ROUTE_SUFFIX = '/__dev/api/blog-md'
 const ROUTE_PATH_SUFFIX = '/__dev/api/blog-md-path'
 const ROUTE_OPEN_LOCAL_SUFFIX = '/__dev/api/blog-open-local'
+const ROUTE_CONTENT_FS_SUFFIX = '/__dev/api/blog-content-fs'
 
 function readRequestBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -18,23 +19,38 @@ function readRequestBody(req: IncomingMessage): Promise<string> {
   })
 }
 
-function resolveSafeMarkdownPath(root: string, sourcePath: string): string | null {
+function getContentRoot(projectRoot: string) {
+  return path.resolve(projectRoot, blogContentConfig.contentDirName)
+}
+
+/** Normalized relative path under content/ (no leading slash), or "" for content root. Null if invalid. */
+export function normalizeRelativeUnderContent(input: string): string | null {
+  const normalized = input.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '')
+  if (normalized === '') return ''
+  const segments = normalized.split('/').filter(Boolean)
+  if (segments.length === 0) return ''
+  if (segments.some((s) => s === '..' || s === '.' || s.includes('\0'))) return null
+  return segments.join('/')
+}
+
+function resolveUnderContentDir(projectRoot: string, relativePosixPath: string | null): string | null {
+  const rel = relativePosixPath === null ? null : normalizeRelativeUnderContent(relativePosixPath)
+  if (rel === null) return null
+
+  const contentRoot = getContentRoot(projectRoot)
+  const abs =
+    rel === '' ? contentRoot : path.resolve(contentRoot, ...rel.split('/'))
+  const back = path.relative(contentRoot, abs)
+  if (back.startsWith('..') || path.isAbsolute(back)) return null
+  return abs
+}
+
+function resolveSafeMarkdownPath(projectRoot: string, sourcePath: string): string | null {
   const normalized = sourcePath.replace(/\\/g, '/').replace(/^\/+/, '')
   if (!normalized) return null
-
-  const segments = normalized.split('/').filter(Boolean)
-  if (segments.length === 0) return null
-  if (segments.some((s) => s === '..' || s === '.' || s.includes('\0'))) return null
-
-  const last = segments[segments.length - 1]
-  if (!last.endsWith('.md')) return null
-
-  const contentRoot = path.resolve(root, blogContentConfig.contentDirName)
-  const abs = path.resolve(contentRoot, ...segments)
-  const rel = path.relative(contentRoot, abs)
-  if (rel.startsWith('..') || path.isAbsolute(rel)) return null
-
-  return abs
+  const last = normalized.split('/').filter(Boolean).pop()
+  if (!last?.endsWith('.md')) return null
+  return resolveUnderContentDir(projectRoot, normalized)
 }
 
 function pathnameMatchesRoute(url: string | undefined): boolean {
@@ -53,6 +69,202 @@ function pathnameMatchesOpenLocalRoute(url: string | undefined): boolean {
   if (!url) return false
   const pathname = new URL(url, 'http://dev.local').pathname
   return pathname === ROUTE_OPEN_LOCAL_SUFFIX || pathname.endsWith(ROUTE_OPEN_LOCAL_SUFFIX)
+}
+
+function pathnameMatchesContentFsRoute(url: string | undefined): boolean {
+  if (!url) return false
+  const pathname = new URL(url, 'http://dev.local').pathname
+  return pathname === ROUTE_CONTENT_FS_SUFFIX || pathname.endsWith(ROUTE_CONTENT_FS_SUFFIX)
+}
+
+function isDirPrefixInsideOrEqual(prefix: string, candidate: string) {
+  return candidate === prefix || candidate.startsWith(`${prefix}/`)
+}
+
+function slugifyFilenameBase(name: string): string | null {
+  const t = name.trim().replace(/\\/g, '/')
+  const base = t.endsWith('.md') ? t.slice(0, -3) : t
+  const seg = base.split('/').filter(Boolean).pop() ?? ''
+  if (!seg) return null
+  if (seg.includes('/') || seg.includes('\\')) return null
+  if (seg === '.' || seg === '..') return null
+  if (seg.includes('\0')) return null
+  return seg
+}
+
+function defaultMarkdownTemplate(title: string, dateIso: string) {
+  return `---
+title: ${title}
+date: ${dateIso}
+---
+
+`
+}
+
+function defaultIndexStub(folderTitle: string, dateIso: string) {
+  return defaultMarkdownTemplate(folderTitle, dateIso)
+}
+
+async function pathExists(abs: string) {
+  try {
+    await fs.access(abs)
+    return true
+  } catch {
+    return false
+  }
+}
+
+type ContentFsBody =
+  | { action: 'createMarkdown'; parentRelativeDir?: unknown; slug?: unknown; raw?: unknown }
+  | { action: 'createFolder'; parentRelativeDir?: unknown; name?: unknown }
+  | { action: 'deleteMarkdown'; sourcePath?: unknown }
+  | { action: 'deleteDirectory'; treePathPrefix?: unknown }
+  | { action: 'renameOrMove'; fromSourcePath?: unknown; toSourcePath?: unknown }
+
+async function handleContentFs(projectRoot: string, body: string, res: { statusCode: number; setHeader: (k: string, v: string) => void; end: (chunk?: string) => void }) {
+  let parsed: ContentFsBody
+  try {
+    parsed = JSON.parse(body) as ContentFsBody
+  } catch {
+    res.statusCode = 400
+    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    res.end(JSON.stringify({ ok: false, error: 'invalid json' }))
+    return
+  }
+
+  const action = parsed.action
+  const jsonOk = (data: Record<string, unknown>) => {
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    res.end(JSON.stringify({ ok: true, ...data }))
+  }
+  const jsonErr = (code: number, message: string) => {
+    res.statusCode = code
+    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    res.end(JSON.stringify({ ok: false, error: message }))
+  }
+
+  try {
+    if (action === 'createMarkdown') {
+      const parentRaw = typeof parsed.parentRelativeDir === 'string' ? parsed.parentRelativeDir : ''
+      const parent = normalizeRelativeUnderContent(parentRaw)
+      if (parent === null) return jsonErr(400, 'invalid parentRelativeDir')
+      const slug = typeof parsed.slug === 'string' ? slugifyFilenameBase(parsed.slug) : null
+      if (!slug) return jsonErr(400, 'invalid slug')
+      const rel = parent ? `${parent}/${slug}.md` : `${slug}.md`
+      const abs = resolveUnderContentDir(projectRoot, rel)
+      if (!abs) return jsonErr(400, 'invalid path')
+      if (await pathExists(abs)) return jsonErr(409, 'file already exists')
+      const raw =
+        typeof parsed.raw === 'string' && parsed.raw.length > 0
+          ? parsed.raw
+          : defaultMarkdownTemplate(slug.replace(/[-_]/g, ' '), new Date().toISOString().slice(0, 10))
+      await fs.mkdir(path.dirname(abs), { recursive: true })
+      await fs.writeFile(abs, raw, 'utf8')
+      return jsonOk({ sourcePath: rel })
+    }
+
+    if (action === 'createFolder') {
+      const parentRaw = typeof parsed.parentRelativeDir === 'string' ? parsed.parentRelativeDir : ''
+      const parent = normalizeRelativeUnderContent(parentRaw)
+      if (parent === null) return jsonErr(400, 'invalid parentRelativeDir')
+      const folderName = typeof parsed.name === 'string' ? slugifyFilenameBase(parsed.name) : null
+      if (!folderName) return jsonErr(400, 'invalid name')
+      const dirRel = parent ? `${parent}/${folderName}` : folderName
+      const indexRel = `${dirRel}/index.md`
+      const absIndex = resolveUnderContentDir(projectRoot, indexRel)
+      if (!absIndex) return jsonErr(400, 'invalid path')
+      if (await pathExists(absIndex)) return jsonErr(409, 'folder or index.md already exists')
+      await fs.mkdir(path.dirname(absIndex), { recursive: true })
+      await fs.writeFile(
+        absIndex,
+        defaultIndexStub(folderName.replace(/[-_]/g, ' '), new Date().toISOString().slice(0, 10)),
+        'utf8',
+      )
+      return jsonOk({ sourcePath: indexRel, treePathPrefix: dirRel })
+    }
+
+    if (action === 'deleteMarkdown') {
+      if (typeof parsed.sourcePath !== 'string') return jsonErr(400, 'missing sourcePath')
+      const abs = resolveSafeMarkdownPath(projectRoot, parsed.sourcePath)
+      if (!abs) return jsonErr(400, 'invalid sourcePath')
+      try {
+        const st = await fs.stat(abs)
+        if (!st.isFile()) return jsonErr(400, 'not a file')
+      } catch {
+        return jsonErr(404, 'file not found')
+      }
+      await fs.unlink(abs)
+      return jsonOk({ sourcePath: parsed.sourcePath })
+    }
+
+    if (action === 'deleteDirectory') {
+      if (typeof parsed.treePathPrefix !== 'string') return jsonErr(400, 'missing treePathPrefix')
+      const rel = normalizeRelativeUnderContent(parsed.treePathPrefix)
+      if (rel === null || rel === '') return jsonErr(400, 'invalid treePathPrefix')
+      if (rel.endsWith('.md')) return jsonErr(400, 'use deleteMarkdown for files')
+      const abs = resolveUnderContentDir(projectRoot, rel)
+      if (!abs) return jsonErr(400, 'invalid path')
+      try {
+        const st = await fs.stat(abs)
+        if (!st.isDirectory()) return jsonErr(400, 'not a directory')
+      } catch {
+        return jsonErr(404, 'directory not found')
+      }
+      await fs.rm(abs, { recursive: true, force: true })
+      return jsonOk({ treePathPrefix: rel })
+    }
+
+    if (action === 'renameOrMove') {
+      if (typeof parsed.fromSourcePath !== 'string' || typeof parsed.toSourcePath !== 'string') {
+        return jsonErr(400, 'expected fromSourcePath and toSourcePath')
+      }
+      const fromNorm = normalizeRelativeUnderContent(parsed.fromSourcePath)
+      const toNorm = normalizeRelativeUnderContent(parsed.toSourcePath)
+      if (fromNorm === null || toNorm === null) return jsonErr(400, 'invalid paths')
+
+      const fromIsFile = fromNorm.endsWith('.md')
+      const toIsFile = toNorm.endsWith('.md')
+      if (fromIsFile !== toIsFile) return jsonErr(400, 'file/dir mismatch between from and to')
+
+      if (fromIsFile) {
+        const absFrom = resolveUnderContentDir(projectRoot, fromNorm)
+        const absTo = resolveUnderContentDir(projectRoot, toNorm)
+        if (!absFrom || !absTo) return jsonErr(400, 'invalid path')
+        if (!(await pathExists(absFrom))) return jsonErr(404, 'source not found')
+        if (await pathExists(absTo)) return jsonErr(409, 'target already exists')
+        await fs.mkdir(path.dirname(absTo), { recursive: true })
+        await fs.rename(absFrom, absTo)
+        return jsonOk({ sourcePath: toNorm })
+      }
+
+      // directory rename: prefixes without .md
+      if (fromNorm.endsWith('.md') || toNorm.endsWith('.md')) {
+        return jsonErr(400, 'directory paths must not end with .md')
+      }
+      const absFrom = resolveUnderContentDir(projectRoot, fromNorm)
+      const absTo = resolveUnderContentDir(projectRoot, toNorm)
+      if (!absFrom || !absTo) return jsonErr(400, 'invalid path')
+      if (isDirPrefixInsideOrEqual(fromNorm, toNorm)) {
+        return jsonErr(400, 'cannot move directory into itself or its descendant')
+      }
+      let stFrom
+      try {
+        stFrom = await fs.stat(absFrom)
+      } catch {
+        return jsonErr(404, 'source directory not found')
+      }
+      if (!stFrom.isDirectory()) return jsonErr(400, 'source is not a directory')
+      if (await pathExists(absTo)) return jsonErr(409, 'target already exists')
+      await fs.mkdir(path.dirname(absTo), { recursive: true })
+      await fs.rename(absFrom, absTo)
+      return jsonOk({ treePathPrefix: toNorm })
+    }
+
+    return jsonErr(400, 'unknown action')
+  } catch (e) {
+    return jsonErr(500, e instanceof Error ? e.message : 'operation failed')
+  }
 }
 
 function spawnDetached(command: string, args: string[], options?: { cwd?: string }) {
@@ -194,6 +406,20 @@ export function devBlogSourcePlugin(): Plugin {
 
           res.statusCode = 204
           res.end()
+          return
+        }
+
+        if (req.method === 'POST' && pathnameMatchesContentFsRoute(req.url)) {
+          let body: string
+          try {
+            body = await readRequestBody(req)
+          } catch {
+            res.statusCode = 400
+            res.setHeader('Content-Type', 'application/json; charset=utf-8')
+            res.end(JSON.stringify({ ok: false, error: 'invalid body' }))
+            return
+          }
+          await handleContentFs(server.config.root, body, res)
           return
         }
 

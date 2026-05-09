@@ -28,10 +28,16 @@ import {
   Type,
   X,
 } from 'lucide-react'
-import { markdownBodyForDevPreview, type BlogPost, type BlogPostMeta, type BlogTreeItem } from '../blog/posts'
+import {
+  blogHashidFromSourcePath,
+  markdownBodyForDevPreview,
+  type BlogPost,
+  type BlogPostMeta,
+  type BlogTreeItem,
+} from '../blog/posts'
 import { encodeShareToken } from '../blog/share-id'
 import BlogDevCodemirrorMarkdown from './blog-dev-codemirror-markdown'
-import BlogFileTree from './blog-file-tree'
+import BlogFileTree, { type BlogFileTreeDevFsContext } from './blog-file-tree'
 import { CursorBrandIcon, VsCodeBrandIcon } from './ide-brand-icons'
 import VscodeActivityBar from './vscode-activity-bar'
 import {
@@ -54,6 +60,13 @@ import {
 } from '@/lib/blog-sidebar-prefs'
 import { openBlogLocalShell, openMarkdownInEditor } from '@/lib/blog-dev-open-editor'
 import type { BlogDevSourceSearch } from '@/lib/blog-dev-source-search'
+import {
+  devFsCreateFolder,
+  devFsCreateMarkdown,
+  devFsDeleteDirectory,
+  devFsDeleteMarkdown,
+  devFsRenameOrMove,
+} from '@/lib/blog-dev-content-fs'
 import { withBaseUrl } from '@/lib/base-url'
 import { streamdownMarkdownAllowedTags } from '@/lib/streamdown-markdown-allowed-tags'
 import { streamdownRehypePlugins } from '@/lib/streamdown-rehype-plugins'
@@ -297,6 +310,8 @@ export default function BlogListPage({
   /** 偏好与布局稳定后再启用 grid / 资源管理器宽度过渡，避免水合或存储回填触发「假关闭」动画 */
   const [sidebarLayoutTransitionReady, setSidebarLayoutTransitionReady] = useState(false)
   const [toggleDirectoryRequest, setToggleDirectoryRequest] = useState<{ path: string; nonce: number }>()
+  const [devFsToolbarParentDir, setDevFsToolbarParentDir] = useState('')
+  const devFsEnabled = import.meta.env.DEV
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
   const [shareAction, setShareAction] = useState<'copy-link' | 'copy-article' | 'download-md' | 'open-new-tab'>('copy-link')
   const [shareState, setShareState] = useState<'idle' | 'copied-link' | 'copied-article' | 'failed'>('idle')
@@ -580,6 +595,181 @@ export default function BlogListPage({
     }
   }
 
+  const afterDevFsMutation = async () => {
+    await new Promise((r) => window.setTimeout(r, 80))
+    await router.invalidate()
+  }
+
+  const navigateToPostHashid = (hashid: string) => {
+    void navigate({
+      to: '/blog/$hashid',
+      params: { hashid },
+      search: devSourceMode ? { source: 1 } : {},
+    })
+  }
+
+  const handleDevFsCreateMarkdown = async (parentRelativeDir: string) => {
+    const slug = window.prompt('新文件名（不含 .md，可用连字符）', 'new-post')
+    if (!slug?.trim()) return
+    const r = await devFsCreateMarkdown(parentRelativeDir, slug.trim())
+    if (!r.ok) {
+      window.alert(r.error)
+      return
+    }
+    const newPath = r.sourcePath
+    await afterDevFsMutation()
+    navigateToPostHashid(blogHashidFromSourcePath(newPath))
+  }
+
+  const handleDevFsCreateFolder = async (parentRelativeDir: string) => {
+    const name = window.prompt('新文件夹名称', 'new-folder')
+    if (!name?.trim()) return
+    const r = await devFsCreateFolder(parentRelativeDir, name.trim())
+    if (!r.ok) {
+      window.alert(r.error)
+      return
+    }
+    const newPath = r.sourcePath
+    await afterDevFsMutation()
+    navigateToPostHashid(blogHashidFromSourcePath(newPath))
+  }
+
+  const handleDevFsRename = async (ctx: BlogFileTreeDevFsContext) => {
+    if (ctx.kind === 'file') {
+      const base = ctx.sourcePath.replace(/\\/g, '/').split('/').pop() ?? ''
+      const stem = base.endsWith('.md') ? base.slice(0, -3) : base
+      const nextStem = window.prompt('新文件名（不含 .md）', stem)
+      if (!nextStem?.trim() || nextStem.trim() === stem) return
+      const parent = ctx.sourcePath.includes('/')
+        ? ctx.sourcePath.slice(0, ctx.sourcePath.lastIndexOf('/'))
+        : ''
+      const slug = nextStem.trim().replace(/\.md$/i, '')
+      const toSourcePath = parent ? `${parent}/${slug}.md` : `${slug}.md`
+      const r = await devFsRenameOrMove(ctx.sourcePath.replace(/\\/g, '/'), toSourcePath)
+      if (!r.ok) {
+        window.alert(r.error)
+        return
+      }
+      await afterDevFsMutation()
+      if (activePost?.meta.sourcePath.replace(/\\/g, '/') === ctx.sourcePath.replace(/\\/g, '/')) {
+        navigateToPostHashid(blogHashidFromSourcePath(toSourcePath))
+      }
+      return
+    }
+
+    const parts = ctx.treePath.split('/').filter(Boolean)
+    const last = parts.at(-1)
+    if (!last) return
+    const nextLast = window.prompt('新文件夹名称', last)
+    if (!nextLast?.trim() || nextLast.trim() === last) return
+    const parent = parts.length > 1 ? parts.slice(0, -1).join('/') : ''
+    const toPrefix = parent ? `${parent}/${nextLast.trim()}` : nextLast.trim()
+    const fromNorm = ctx.treePath.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+    const r = await devFsRenameOrMove(fromNorm, toPrefix)
+    if (!r.ok) {
+      window.alert(r.error)
+      return
+    }
+    await afterDevFsMutation()
+    if (activePost) {
+      const sp = activePost.meta.sourcePath.replace(/\\/g, '/')
+      if (sp.startsWith(`${fromNorm}/`) || sp === `${fromNorm}/index.md`) {
+        const tail = sp.slice(fromNorm.length)
+        const newSource = `${toPrefix}${tail}`
+        navigateToPostHashid(blogHashidFromSourcePath(newSource))
+      }
+    }
+  }
+
+  const handleDevFsDelete = async (ctx: BlogFileTreeDevFsContext) => {
+    const label = ctx.kind === 'file' ? ctx.sourcePath : ctx.treePath
+    if (!window.confirm(`确定删除「${label}」？${ctx.kind === 'dir' ? '（将删除其中所有文件）' : ''}`)) return
+
+    const currentSp = activePost?.meta.sourcePath.replace(/\\/g, '/')
+    let fallbackHash: string | undefined
+
+    if (ctx.kind === 'file') {
+      const doomed = currentSp === ctx.sourcePath.replace(/\\/g, '/')
+      if (doomed) {
+        const survivors = posts.filter((p) => p.sourcePath.replace(/\\/g, '/') !== ctx.sourcePath.replace(/\\/g, '/'))
+        const fb = survivors.find((p) => p.sourcePath === 'index.md') ?? survivors[0]
+        fallbackHash = fb?.hashid
+      }
+      const r = await devFsDeleteMarkdown(ctx.sourcePath.replace(/\\/g, '/'))
+      if (!r.ok) {
+        window.alert(r.error)
+        return
+      }
+    } else {
+      const prefix = ctx.treePath.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+      if (currentSp && (currentSp === `${prefix}/index.md` || currentSp.startsWith(`${prefix}/`))) {
+        const survivors = posts.filter((p) => {
+          const sp = p.sourcePath.replace(/\\/g, '/')
+          return !(sp === `${prefix}/index.md` || sp.startsWith(`${prefix}/`))
+        })
+        const fb = survivors.find((p) => p.sourcePath === 'index.md') ?? survivors[0]
+        fallbackHash = fb?.hashid
+      }
+      const r = await devFsDeleteDirectory(prefix)
+      if (!r.ok) {
+        window.alert(r.error)
+        return
+      }
+    }
+
+    await afterDevFsMutation()
+    if (fallbackHash) navigateToPostHashid(fallbackHash)
+  }
+
+  const handleDevFsMove = async (from: BlogFileTreeDevFsContext, toParentRelativeDir: string) => {
+    const toNorm = toParentRelativeDir.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+    try {
+      if (from.kind === 'file') {
+        const normFrom = from.sourcePath.replace(/\\/g, '/')
+        const base = normFrom.split('/').pop() ?? ''
+        if (!base) return
+        const toSourcePath = toNorm ? `${toNorm}/${base}` : base
+        if (normFrom === toSourcePath) return
+        const r = await devFsRenameOrMove(normFrom, toSourcePath)
+        if (!r.ok) {
+          window.alert(r.error)
+          return
+        }
+        await afterDevFsMutation()
+        if (activePost?.meta.sourcePath.replace(/\\/g, '/') === normFrom) {
+          navigateToPostHashid(blogHashidFromSourcePath(toSourcePath))
+        }
+        return
+      }
+
+      const fromNorm = from.treePath.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+      const parts = fromNorm.split('/').filter(Boolean)
+      const last = parts.at(-1)
+      if (!last) return
+      const toPrefix = toNorm ? `${toNorm}/${last}` : last
+      if (fromNorm === toPrefix) return
+      if (toPrefix.startsWith(`${fromNorm}/`) || fromNorm.startsWith(`${toPrefix}/`)) {
+        window.alert('不能将文件夹移动到自身或其子路径下')
+        return
+      }
+      const r = await devFsRenameOrMove(fromNorm, toPrefix)
+      if (!r.ok) {
+        window.alert(r.error)
+        return
+      }
+      await afterDevFsMutation()
+      if (activePost) {
+        const sp = activePost.meta.sourcePath.replace(/\\/g, '/')
+        if (sp.startsWith(`${fromNorm}/`) || sp === `${fromNorm}/index.md`) {
+          const newSource = `${toPrefix}${sp.slice(fromNorm.length)}`
+          navigateToPostHashid(blogHashidFromSourcePath(newSource))
+        }
+      }
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : String(e))
+    }
+  }
+
   const runShareAction = async () => {
     if (shareAction === 'open-new-tab') {
       openCurrentInNewTab()
@@ -599,6 +789,12 @@ export default function BlogListPage({
   useEffect(() => {
     setDevMdEditorPrefs(readBlogDevMdEditorPrefs())
   }, [])
+
+  useEffect(() => {
+    if (!devFsEnabled || !activePost) return
+    const sp = activePost.meta.sourcePath.replace(/\\/g, '/')
+    setDevFsToolbarParentDir(sp.includes('/') ? sp.slice(0, sp.lastIndexOf('/')) : '')
+  }, [activePost?.meta.hashid, devFsEnabled])
 
   useLayoutEffect(() => {
     const p = readBlogSidebarUiPrefs()
@@ -1033,6 +1229,14 @@ export default function BlogListPage({
                 onOpenPathsChange={setOpenDirectoryPaths}
                 onSelectFile={closeMobileTree}
                 linkSearch={devSourceMode ? { source: 1 } : undefined}
+                devFsEnabled={devFsEnabled}
+                devFsToolbarParentDir={devFsToolbarParentDir}
+                onDevFsToolbarParentChange={setDevFsToolbarParentDir}
+                onDevFsCreateMarkdown={handleDevFsCreateMarkdown}
+                onDevFsCreateFolder={handleDevFsCreateFolder}
+                onDevFsRename={handleDevFsRename}
+                onDevFsDelete={handleDevFsDelete}
+                onDevFsMove={handleDevFsMove}
               />
             </div>
             <button
@@ -1080,6 +1284,14 @@ export default function BlogListPage({
                 onOpenPathsChange={setOpenDirectoryPaths}
                 onSelectFile={() => setShowMobileTree(false)}
                 linkSearch={devSourceMode ? { source: 1 } : undefined}
+                devFsEnabled={devFsEnabled}
+                devFsToolbarParentDir={devFsToolbarParentDir}
+                onDevFsToolbarParentChange={setDevFsToolbarParentDir}
+                onDevFsCreateMarkdown={handleDevFsCreateMarkdown}
+                onDevFsCreateFolder={handleDevFsCreateFolder}
+                onDevFsRename={handleDevFsRename}
+                onDevFsDelete={handleDevFsDelete}
+                onDevFsMove={handleDevFsMove}
               />
             </div>
             {!sidebarsHidden ? (

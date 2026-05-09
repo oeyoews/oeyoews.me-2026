@@ -87,8 +87,13 @@ function fnv1aHash(input: string) {
   return hash >>> 0
 }
 
+/** Stable id for routes; same algorithm as build-time post ids. */
+export function blogHashidFromSourcePath(sourcePath: string) {
+  return fnv1aHash(sourcePath).toString(36)
+}
+
 function createHashIdFromPath(path: string) {
-  return fnv1aHash(path).toString(36)
+  return blogHashidFromSourcePath(path)
 }
 
 const ENTRY_SOURCE_PATH = 'index.md'
