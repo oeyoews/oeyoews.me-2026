@@ -1822,15 +1822,17 @@ export default function BlogListPage({
                     </div>
                     <div
                       className={cn(
-                        'grid min-h-0 grid-cols-1 gap-3 lg:grid-rows-1 lg:gap-4 lg:items-stretch',
-                        devMdEditorPrefs.livePreviewEnabled && 'lg:grid-cols-2',
+                        'grid min-h-0 grid-cols-1 gap-3 lg:grid-rows-1 lg:items-stretch',
+                        devMdEditorPrefs.livePreviewEnabled
+                          ? 'lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-0'
+                          : 'lg:gap-4',
                       )}
                     >
                       <div
                         className={cn(
                           'min-h-0',
                           devMdEditorPrefs.livePreviewEnabled
-                            ? 'min-w-0'
+                            ? 'min-w-0 lg:pr-4'
                             : 'col-span-full flex justify-center',
                         )}
                       >
@@ -1880,9 +1882,15 @@ export default function BlogListPage({
                         </div>
                       </div>
                       {devMdEditorPrefs.livePreviewEnabled ? (
-                        <div ref={contentRef} className="flex h-full min-h-0 min-w-0 flex-col gap-1">
+                        <div
+                          aria-hidden
+                          className="hidden min-h-0 w-px shrink-0 bg-border self-stretch lg:block"
+                        />
+                      ) : null}
+                      {devMdEditorPrefs.livePreviewEnabled ? (
+                        <div ref={contentRef} className="flex h-full min-h-0 min-w-0 flex-col gap-1 lg:pl-4">
                           <p className="m-0 text-xs font-medium text-muted-foreground">实时预览</p>
-                          <div className="blog-article-content max-w-none prose-pre:my-0 flex h-full min-h-[min(42vh,400px)] flex-1 overflow-y-auto rounded-lg border border-border bg-background px-3 py-2 sm:px-4 lg:min-h-[min(62vh,620px)]">
+                          <div className="blog-article-content max-w-none prose-pre:my-0 flex h-full min-h-[min(42vh,400px)] min-w-0 flex-1 overflow-y-auto lg:min-h-[min(62vh,620px)]">
                             {devLivePreviewMarkdown.trim() ? (
                               <Streamdown
                                 allowedTags={streamdownMarkdownAllowedTags}
