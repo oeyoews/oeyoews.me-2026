@@ -19,10 +19,9 @@ import { blogUiConfig } from '@/blog/config'
 import { withBaseUrl } from '@/lib/base-url'
 import type { BlogDevSourceSearch } from '@/lib/blog-dev-source-search'
 import { cn } from '@/lib/utils'
+import type { BlogFileTreeDevFsContext } from './blog-file-tree-types'
 
-export type BlogFileTreeDevFsContext =
-  | { kind: 'file'; sourcePath: string; treePath: string }
-  | { kind: 'dir'; treePath: string }
+export type { BlogFileTreeDevFsContext } from './blog-file-tree-types'
 
 type BlogFileTreeProps = {
   items: Array<{

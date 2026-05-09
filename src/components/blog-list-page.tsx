@@ -1,4 +1,13 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react'
 import { useNavigate, useRouter } from '@tanstack/react-router'
 import { Streamdown } from 'streamdown'
 import { createCodePlugin } from '@streamdown/code'
@@ -36,8 +45,10 @@ import {
   type BlogTreeItem,
 } from '../blog/posts'
 import { encodeShareToken } from '../blog/share-id'
-import BlogDevCodemirrorMarkdown from './blog-dev-codemirror-markdown'
-import BlogFileTree, { type BlogFileTreeDevFsContext } from './blog-file-tree'
+import type { BlogFileTreeDevFsContext } from './blog-file-tree-types'
+
+const BlogFileTree = lazy(() => import('./blog-file-tree'))
+const BlogDevCodemirrorMarkdown = lazy(() => import('./blog-dev-codemirror-markdown'))
 import { CursorBrandIcon, VsCodeBrandIcon } from './ide-brand-icons'
 import VscodeActivityBar from './vscode-activity-bar'
 import {
@@ -272,6 +283,38 @@ async function copyTextToClipboard(text: string) {
   }
 }
 
+function BlogFileTreeSuspenseFallback() {
+  return (
+    <aside className="relative flex h-full max-h-dvh min-h-0 flex-col" aria-busy="true" aria-label="加载目录">
+      <p className="explorer-heading flex w-full items-center gap-2">
+        <span className="inline-flex size-4 shrink-0 animate-pulse rounded bg-[#2f3750]" />
+        <span className="h-3.5 w-14 shrink-0 animate-pulse rounded bg-[#2f3750]" />
+      </p>
+      <ul className="explorer-tree-list min-h-0 flex-1 space-y-2 overflow-hidden p-2 pt-1">
+        {Array.from({ length: 7 }, (_, i) => (
+          <li key={i} className="h-6 animate-pulse rounded-sm bg-white/10" />
+        ))}
+      </ul>
+    </aside>
+  )
+}
+
+function BlogDevCodemirrorFallback({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-center gap-2 rounded-lg border border-border bg-muted/30 text-muted-foreground',
+        className,
+      )}
+      aria-busy="true"
+      aria-label="加载编辑器"
+    >
+      <Loader2 className="size-5 shrink-0 animate-spin" />
+      <span className="text-sm">加载编辑器…</span>
+    </div>
+  )
+}
+
 export default function BlogListPage({
   posts,
   treeItems,
@@ -351,6 +394,11 @@ export default function BlogListPage({
   const currentHashid = activePost?.meta.hashid
   const devEditorEnabled = import.meta.env.DEV && activePost?.raw !== undefined
   const devSourceMode = Boolean(devEditorEnabled && devSourceSearch.source === 1)
+
+  useEffect(() => {
+    if (!devEditorEnabled) return
+    void import('./blog-dev-codemirror-markdown')
+  }, [devEditorEnabled])
 
   const toggleDevSourceMode = () => {
     if (!devEditorEnabled) return
@@ -1220,24 +1268,26 @@ export default function BlogListPage({
             }}
           >
             <div className="min-h-0 flex-1 overflow-y-auto pb-16">
-              <BlogFileTree
-                items={treeItems}
-                currentHashid={currentHashid}
-                focusedHashid={focusedHashid}
-                focusedTreePath={focusedTreePath}
-                toggleDirectoryRequest={toggleDirectoryRequest}
-                onOpenPathsChange={setOpenDirectoryPaths}
-                onSelectFile={closeMobileTree}
-                linkSearch={devSourceMode ? { source: 1 } : undefined}
-                devFsEnabled={devFsEnabled}
-                devFsToolbarParentDir={devFsToolbarParentDir}
-                onDevFsToolbarParentChange={setDevFsToolbarParentDir}
-                onDevFsCreateMarkdown={handleDevFsCreateMarkdown}
-                onDevFsCreateFolder={handleDevFsCreateFolder}
-                onDevFsRename={handleDevFsRename}
-                onDevFsDelete={handleDevFsDelete}
-                onDevFsMove={handleDevFsMove}
-              />
+              <Suspense fallback={<BlogFileTreeSuspenseFallback />}>
+                <BlogFileTree
+                  items={treeItems}
+                  currentHashid={currentHashid}
+                  focusedHashid={focusedHashid}
+                  focusedTreePath={focusedTreePath}
+                  toggleDirectoryRequest={toggleDirectoryRequest}
+                  onOpenPathsChange={setOpenDirectoryPaths}
+                  onSelectFile={closeMobileTree}
+                  linkSearch={devSourceMode ? { source: 1 } : undefined}
+                  devFsEnabled={devFsEnabled}
+                  devFsToolbarParentDir={devFsToolbarParentDir}
+                  onDevFsToolbarParentChange={setDevFsToolbarParentDir}
+                  onDevFsCreateMarkdown={handleDevFsCreateMarkdown}
+                  onDevFsCreateFolder={handleDevFsCreateFolder}
+                  onDevFsRename={handleDevFsRename}
+                  onDevFsDelete={handleDevFsDelete}
+                  onDevFsMove={handleDevFsMove}
+                />
+              </Suspense>
             </div>
             <button
               type="button"
@@ -1275,24 +1325,26 @@ export default function BlogListPage({
               )}
               aria-hidden={sidebarsHidden}
             >
-              <BlogFileTree
-                items={treeItems}
-                currentHashid={currentHashid}
-                focusedHashid={focusedHashid}
-                focusedTreePath={focusedTreePath}
-                toggleDirectoryRequest={toggleDirectoryRequest}
-                onOpenPathsChange={setOpenDirectoryPaths}
-                onSelectFile={() => setShowMobileTree(false)}
-                linkSearch={devSourceMode ? { source: 1 } : undefined}
-                devFsEnabled={devFsEnabled}
-                devFsToolbarParentDir={devFsToolbarParentDir}
-                onDevFsToolbarParentChange={setDevFsToolbarParentDir}
-                onDevFsCreateMarkdown={handleDevFsCreateMarkdown}
-                onDevFsCreateFolder={handleDevFsCreateFolder}
-                onDevFsRename={handleDevFsRename}
-                onDevFsDelete={handleDevFsDelete}
-                onDevFsMove={handleDevFsMove}
-              />
+              <Suspense fallback={<BlogFileTreeSuspenseFallback />}>
+                <BlogFileTree
+                  items={treeItems}
+                  currentHashid={currentHashid}
+                  focusedHashid={focusedHashid}
+                  focusedTreePath={focusedTreePath}
+                  toggleDirectoryRequest={toggleDirectoryRequest}
+                  onOpenPathsChange={setOpenDirectoryPaths}
+                  onSelectFile={() => setShowMobileTree(false)}
+                  linkSearch={devSourceMode ? { source: 1 } : undefined}
+                  devFsEnabled={devFsEnabled}
+                  devFsToolbarParentDir={devFsToolbarParentDir}
+                  onDevFsToolbarParentChange={setDevFsToolbarParentDir}
+                  onDevFsCreateMarkdown={handleDevFsCreateMarkdown}
+                  onDevFsCreateFolder={handleDevFsCreateFolder}
+                  onDevFsRename={handleDevFsRename}
+                  onDevFsDelete={handleDevFsDelete}
+                  onDevFsMove={handleDevFsMove}
+                />
+              </Suspense>
             </div>
             {!sidebarsHidden ? (
               <div
@@ -1798,21 +1850,34 @@ export default function BlogListPage({
                           )}
                         >
                           <p className="m-0 text-xs font-medium text-muted-foreground">Markdown 源码</p>
-                          <BlogDevCodemirrorMarkdown
-                            editorKey={activePost.meta.hashid}
-                            value={devDraftRaw}
-                            onChange={setDevDraftRaw}
-                            onSaveShortcut={() => void saveDevDraftToDisk()}
-                            vimKeybindings={devMdEditorPrefs.vimEnabled}
-                            fontFamily={fontFamilyForBlogDevEditor(devMdEditorPrefs.fontId)}
-                            fontSizePx={devMdEditorPrefs.fontSizePx}
-                            className={cn(
-                              'h-full min-h-[min(42vh,400px)] min-w-0 flex-1',
-                              devMdEditorPrefs.livePreviewEnabled
-                                ? 'lg:min-h-[min(62vh,620px)]'
-                                : 'lg:min-h-[min(70vh,720px)]',
-                            )}
-                          />
+                          <Suspense
+                            fallback={
+                              <BlogDevCodemirrorFallback
+                                className={cn(
+                                  'h-full min-h-[min(42vh,400px)] min-w-0 flex-1',
+                                  devMdEditorPrefs.livePreviewEnabled
+                                    ? 'lg:min-h-[min(62vh,620px)]'
+                                    : 'lg:min-h-[min(70vh,720px)]',
+                                )}
+                              />
+                            }
+                          >
+                            <BlogDevCodemirrorMarkdown
+                              editorKey={activePost.meta.hashid}
+                              value={devDraftRaw}
+                              onChange={setDevDraftRaw}
+                              onSaveShortcut={() => void saveDevDraftToDisk()}
+                              vimKeybindings={devMdEditorPrefs.vimEnabled}
+                              fontFamily={fontFamilyForBlogDevEditor(devMdEditorPrefs.fontId)}
+                              fontSizePx={devMdEditorPrefs.fontSizePx}
+                              className={cn(
+                                'h-full min-h-[min(42vh,400px)] min-w-0 flex-1',
+                                devMdEditorPrefs.livePreviewEnabled
+                                  ? 'lg:min-h-[min(62vh,620px)]'
+                                  : 'lg:min-h-[min(70vh,720px)]',
+                              )}
+                            />
+                          </Suspense>
                           {!devMdEditorPrefs.livePreviewEnabled ? (
                             <div
                               ref={contentRef}
